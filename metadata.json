@@ -1,0 +1,6 @@
+{
+  "name": "Realtor Estates — Property in Nagpur",
+  "description": "Buy Your Estate, Build Your Legacy. Cinematic 3D interactive plot maps, 360-degree land inspection, and budget/loan planning across MIHAN, Butibori, Wardha Road, and Hingna in Nagpur.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,19 @@
+# Realtor Estates — Property in Nagpur
+
+> Buy Your Estates, Build Your Legacy · Living Legacy Lifestyle. Curated NMRDA and Town Planning sanctioned residential and commercial plotted developments across Salai Dabha, Mouza Kanholi, Hingna, MIHAN, and Wardha Road in Nagpur, Maharashtra, India.
+
+## Flagship Nagpur Layouts & Starting Pricing
+- /projects/samruddhi-estate-phase-3 — Samruddhi Estate Phase 3 (Salai Dabha, Kh. No. 110, P.H. No. 70, Tah. Hingna, Nagpur). NMRDA Sanctioned Agreement Dt. 02/07/2026. 76 plots (01–76), 12.00 m wide spine road, 9.00 m internal roads, 1,931.19 sq.m open park. Pricing: Residential start @ ₹1,700/sq.ft, Commercial start @ ₹1,750/sq.ft.
+- /projects/samruddhi-estate-phase-4 — Samruddhi Estate Phase 4 (Salai Dabha, Kh. No. 111, P.H. No. 70, Tah. Hingna, Nagpur). Direct 18.00 m Wide D.P. Road frontage (D.P. Sheet No. 117), 83 plots (01–83), 2,001.28 sq.m dual open parks, 1,000.32 sq.m amenity space. Pricing: Residential start @ ₹1,700/sq.ft, Commercial start @ ₹1,750/sq.ft.
+- /projects/bhagirath-nagari — Bhagirathi Nagar - 4 / Bhagirath Nagari (Sr. No. 87/1, P.H. No. 48, Mouza Kanholi, Tah. Hingna, Nagpur). NMRDA digitally signed submission Ref: NMRDA-26-36337 (Dt. 12/06/2026), 15.69 acres, 253 plots (1–253), 3 parks (6,370.38 sq.m), 2 amenity spaces (6,354.83 sq.m), UDCPR-2020 Pro-Rata FSI 1.654. Pricing: Residential start @ ₹1,990/sq.ft, Commercial start @ ₹2,050/sq.ft.
+- /projects/ananta-akasha — Ananta & Akasha (Kh. No. 64 & 64/2, Adj. Sanctioned NATP Kh. No. 66/2, Hingna Belt, Nagpur). 30.00 m Wide Road & 18.00 m Central Boulevard, 54 plots across Ananta West Wing & Akasha East Wing. Indicative starting rate: ₹2,650/sq.ft.
+
+## Key Capabilities
+- Interactive 3D WebGL master layout flythrough with camera rig spline choreography.
+- Individual plot 360-degree pop-out 3D viewer with exact meter/feet dimensions, wide frontage road signage, live rotational true-north compass, and 3D allotted residence models on sold-out parcels.
+- Live Maharashtra budget, stamp duty (including 5% women-buyer concession), registration, and Nagpur bank plot-loan EMI calculator (SBI Realty, HDFC Bank, ICICI Bank, Bank of Baroda, Axis Bank, LIC HFL).
+- Exclusive 14-Point Maharashtra Plot Buyer's Guide & Legal Checklist unlocked upon submitting an enquiry.
+
+## Compliance & Privacy
+- Personal owner/engineer details from sanction sheets are strictly redacted online for security.
+- Prospective buyers are advised to independently verify original title deeds, current 7/12 (Satbara) extracts, NMRDA/NIT/NATP layout sanctions, NA orders, and applicable MahaRERA registrations before any financial commitment.
