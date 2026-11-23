@@ -3,19 +3,33 @@
 
 @layer base {
   :root {
-    --font-display: "Cormorant Garamond", Georgia, serif;
-    --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-editorial: "Cormorant Garamond", Georgia, serif;
+    --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   }
 
   html {
-    scroll-behavior: smooth;
     scroll-padding-top: 84px;
     font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
-  h1, h2, h3, .font-display {
-    font-family: var(--font-display);
+  /* Preserve the beloved Cormorant Garamond editorial serif strictly for Hero H1 & brand wordmark */
+  h1,
+  .font-editorial,
+  .font-display {
+    font-family: var(--font-editorial);
+  }
+
+  /* Unify all section headings, card titles & UI subheadings under Apple-clean Plus Jakarta Sans */
+  h2,
+  h3,
+  h4,
+  .font-heading {
+    font-family: var(--font-sans);
+    letter-spacing: -0.025em;
   }
 
   .font-mono-tabular {
@@ -42,30 +56,55 @@
   text-wrap: balance;
 }
 
-/* Custom subtle range slider for the financial estimator */
+/* Apple-refined range slider for plot budget & EMI controls */
 input[type="range"].estate-slider {
   -webkit-appearance: none;
   appearance: none;
-  height: 4px;
+  height: 5px;
   border-radius: 999px;
-  background: rgba(212, 175, 95, 0.25);
+  background: rgba(212, 175, 95, 0.28);
   outline: none;
 }
 
 input[type="range"].estate-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: #D4AF5F;
-  border: 2px solid #080C0A;
+  border: 2.5px solid #080C0A;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
   cursor: pointer;
-  transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 input[type="range"].estate-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
+  transform: scale(1.14);
+}
+
+.modal-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 95, 0.45) transparent;
+}
+
+.modal-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 95, 0.45);
+  border-radius: 999px;
+}
+
+.modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 95, 0.72);
 }
 
 @media (prefers-reduced-motion: reduce) {

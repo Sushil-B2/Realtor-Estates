@@ -178,6 +178,25 @@ export function PrivacyPolicyPage({ onNavigate }: LegalPageProps) {
           confirmation thread or requesting removal through our Nagpur advisory desk.
         </p>
       </div>
+
+      <div>
+        <h2 className="font-display text-2xl text-[#102018] dark:text-[#F4F1E7]">
+          6. Google Maps Platform Integration
+        </h2>
+        <p className="mt-2">
+          Our optional Satellite &amp; Landmark View integrates Google Maps Platform features. When
+          you open the interactive Google Map view, your interaction is also governed by the{" "}
+          <a
+            href="https://policies.google.com/privacy?utm_campaign=gmp_mcp_codeassist_v1_aistudio"
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className="font-medium text-[#8C6D2E] underline underline-offset-2 dark:text-[#E5C77B]"
+          >
+            Google Privacy Policy
+          </a>
+          .
+        </p>
+      </div>
     </LegalShell>
   );
 }
@@ -246,14 +265,23 @@ export function TermsAndConditionsPage({ onNavigate }: LegalPageProps) {
 
       <div>
         <h2 className="font-display text-2xl text-[#102018] dark:text-[#F4F1E7]">
-          5. Intellectual Property &amp; Governing Law
+          5. Intellectual Property, Google Maps Terms &amp; Governing Law
         </h2>
         <p className="mt-2">
           The Realtor Estates brand emblem, website code, 3D visual presentations, and editorial
           guides are protected intellectual property and may not be reproduced commercially without
-          written permission. Any disputes arising from use of this website shall be governed by the
-          laws of India and subject to the exclusive jurisdiction of competent courts in Nagpur,
-          Maharashtra.
+          written permission. Use of the embedded Google Maps Satellite &amp; Landmark features is
+          additionally subject to the{" "}
+          <a
+            href="https://maps.google.com/help/terms_maps/?utm_campaign=gmp_mcp_codeassist_v1_aistudio"
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className="font-medium text-[#8C6D2E] underline underline-offset-2 dark:text-[#E5C77B]"
+          >
+            Google Maps / Google Earth Additional Terms of Service
+          </a>
+          . Any disputes arising from use of this website shall be governed by the laws of India and
+          subject to the exclusive jurisdiction of competent courts in Nagpur, Maharashtra.
         </p>
       </div>
     </LegalShell>

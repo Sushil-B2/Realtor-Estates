@@ -6,8 +6,11 @@ import {
   Check,
   Compass,
   Maximize2,
+  Minus,
+  Move,
   Pause,
   Play,
+  Plus,
   RotateCcw,
   Share2,
   X,
@@ -50,6 +53,16 @@ function azimuthToCardinal(deg: number): string {
   return dirs[Math.round(norm / 45) % 8];
 }
 
+function extractRoadWidthMeters(roadLabel: string): string {
+  const match = roadLabel.match(/(\d+(?:\.\d+)?)\s*m/i);
+  if (match) {
+    const meters = Number(match[1]);
+    const feet = Math.round(meters * 3.28084);
+    return `${meters.toFixed(2)}m (${feet} ft) ROAD WIDTH`;
+  }
+  return `${roadLabel.toUpperCase()} WIDTH`;
+}
+
 export default function PlotPopout3DModal({
   project,
   plot,
@@ -87,8 +100,13 @@ export default function PlotPopout3DModal({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+    const prevOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.documentElement.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [onClose]);
 
   const finance = useMemo(
@@ -105,7 +123,7 @@ export default function PlotPopout3DModal({
     [plot.areaSqFt, plot.plcPercent, ratePerSqFt, downPaymentPct, interestRate, tenureYears, womenConcession],
   );
 
-  // Mount dedicated 360-degree individual plot diorama
+  // Mount dedicated 360-degree individual plot diorama with full pan/zoom reachability & unobstructed road markings
   useEffect(() => {
     const host = stageRef.current;
     if (!host) return;
@@ -135,40 +153,44 @@ export default function PlotPopout3DModal({
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x08100d);
-    scene.fog = new THREE.FogExp2(0x08100d, 0.011);
+    scene.fog = new THREE.FogExp2(0x08100d, 0.0075);
 
     const pmrem = new THREE.PMREMGenerator(renderer);
     const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     scene.environment = envTex;
     pmrem.dispose();
 
-    const camera = new THREE.PerspectiveCamera(40, 1, 0.2, 260);
-    camera.position.set(16, 13.5, 19);
+    // Wider framing & unobstructed zoom/pan controls so outer corners, road markings, and compass are always reachable
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.2, 320);
+    camera.position.set(19.5, 16.8, 23.5);
 
     const controls = new OrbitControls(camera, canvas);
     controls.enableDamping = !isSoftwareGl;
-    controls.dampingFactor = 0.06;
-    controls.enablePan = false;
-    controls.minDistance = 12;
-    controls.maxDistance = 42;
-    controls.minPolarAngle = 0.22;
-    controls.maxPolarAngle = Math.PI / 2 - 0.08;
+    controls.dampingFactor = 0.065;
+    controls.enablePan = true;
+    controls.screenSpacePanning = true;
+    controls.panSpeed = 0.95;
+    controls.zoomSpeed = 0.95;
+    controls.minDistance = 7.5;
+    controls.maxDistance = 58;
+    controls.minPolarAngle = 0.16;
+    controls.maxPolarAngle = Math.PI / 2 - 0.06;
     controls.autoRotate = !isSoftwareGl;
-    controls.autoRotateSpeed = 0.85;
-    controls.target.set(0, 0.8, 0);
+    controls.autoRotateSpeed = 0.72;
+    controls.target.set(0, 0.9, 0);
     controlsRef.current = controls;
 
     // 3-Point Studio Lighting Rig
-    scene.add(new THREE.HemisphereLight(0xd9eadf, 0x16241d, 1.45));
+    scene.add(new THREE.HemisphereLight(0xd9eadf, 0x16241d, 1.48));
     const keyLight = new THREE.DirectionalLight(0xffe0aa, 2.75);
     keyLight.position.set(-16, 26, 18);
     if (!isSoftwareGl) {
       keyLight.castShadow = true;
       keyLight.shadow.mapSize.set(1024, 1024);
-      keyLight.shadow.camera.left = -22;
-      keyLight.shadow.camera.right = 22;
-      keyLight.shadow.camera.top = 22;
-      keyLight.shadow.camera.bottom = -22;
+      keyLight.shadow.camera.left = -24;
+      keyLight.shadow.camera.right = 24;
+      keyLight.shadow.camera.top = 24;
+      keyLight.shadow.camera.bottom = -24;
       keyLight.shadow.bias = -0.0004;
       keyLight.shadow.normalBias = 0.02;
     }
@@ -180,18 +202,19 @@ export default function PlotPopout3DModal({
 
     // Normalize plot scale to fit hero pedestal nicely while preserving true aspect ratio
     const maxSide = Math.max(plot.w, plot.d);
-    const unitScale = 12.5 / maxSide;
+    const unitScale = 11.8 / maxSide;
     const pw = plot.w * unitScale;
     const pd = plot.d * unitScale;
+    const panLimit = Math.max(pw, pd) * 0.95 + 6.5;
 
     // Soft contact shadow plane under the floating architectural earth plinth
     const shadowTex = createContactShadowTexture();
     const shadowPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(pw + 12, pd + 12),
+      new THREE.PlaneGeometry(pw + 14, pd + 14),
       new THREE.MeshBasicMaterial({
         map: shadowTex,
         transparent: true,
-        opacity: 0.55,
+        opacity: 0.52,
         depthWrite: false,
       }),
     );
@@ -199,7 +222,7 @@ export default function PlotPopout3DModal({
     shadowPlane.position.y = -0.45;
     scene.add(shadowPlane);
 
-    // 1. Subterranean stone & earth plinth (multi-layered architectural cross-section)
+    // 1. Subterranean stone & earth plinth
     const plinthGroup = new THREE.Group();
     const bedrock = new THREE.Mesh(
       new THREE.BoxGeometry(pw + 1.1, 0.85, pd + 1.1),
@@ -250,11 +273,10 @@ export default function PlotPopout3DModal({
     plinthGroup.add(setbackLine);
     scene.add(plinthGroup);
 
-    // 3B. If parcel is SOLD OUT, mount a 3D luxury residence & "SOLD OUT · ALLOTTED" estate plaque directly on the land parcel
+    // 3B. If parcel is SOLD OUT, mount a 3D residence & "SOLD OUT · ALLOTTED" plaque
     if (plot.status === "sold") {
       const soldVilla = buildSoldPropertyModel(renderer, pw, pd);
       soldVilla.position.set(0, 0.95, 0);
-      // Orient villa facade toward the fronting road
       if (plot.faces === "N") soldVilla.rotation.y = Math.PI;
       else if (plot.faces === "E") soldVilla.rotation.y = Math.PI / 2;
       else if (plot.faces === "W") soldVilla.rotation.y = -Math.PI / 2;
@@ -275,6 +297,7 @@ export default function PlotPopout3DModal({
     });
 
     // 5. Fronting Road Strip oriented along the plot's exact compass frontage (N/S/E/W)
+    // Generous gap (roadGap = 3.1) guarantees clean visual separation between plot edge and road markings
     const asphaltTex = createAsphaltTexture(renderer);
     const roadMat = new THREE.MeshStandardMaterial({
       map: asphaltTex,
@@ -282,11 +305,17 @@ export default function PlotPopout3DModal({
       metalness: 0.06,
     });
     const isHorizontalRoad = plot.faces === "N" || plot.faces === "S";
+    const roadThickness = 3.5;
+    const roadLength = isHorizontalRoad ? pw + 6.4 : pd + 6.4;
     const roadMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(isHorizontalRoad ? pw + 5 : 3.2, 0.34, isHorizontalRoad ? 3.2 : pd + 5),
+      new THREE.BoxGeometry(
+        isHorizontalRoad ? roadLength : roadThickness,
+        0.34,
+        isHorizontalRoad ? roadThickness : roadLength,
+      ),
       roadMat,
     );
-    const roadGap = 2.4;
+    const roadGap = 3.15;
     if (plot.faces === "N") roadMesh.position.set(0, 0.56, -(pd / 2 + roadGap));
     else if (plot.faces === "S") roadMesh.position.set(0, 0.56, pd / 2 + roadGap);
     else if (plot.faces === "E") roadMesh.position.set(pw / 2 + roadGap, 0.56, 0);
@@ -294,85 +323,169 @@ export default function PlotPopout3DModal({
     roadMesh.receiveShadow = true;
     scene.add(roadMesh);
 
-    // Road frontage label (high-contrast, always legible above wide road strip) + avenue streetlamp + botanical corner tree
-    const roadLabel = createLabelSprite(renderer, plot.road.toUpperCase(), 7.8, 1.48, {
-      bg: "rgba(8, 18, 13, 0.96)",
+    // Helper to draw crisp architectural dimension line with perpendicular end-ticks (always rendered clearly)
+    const addDimensionLine = (
+      start: THREE.Vector3,
+      end: THREE.Vector3,
+      tickAxis: THREE.Vector3,
+      colorHex: number,
+    ) => {
+      const mat = new THREE.LineBasicMaterial({
+        color: colorHex,
+        depthTest: false,
+        transparent: true,
+        opacity: 0.95,
+      });
+      const halfTick = tickAxis.clone().multiplyScalar(0.38);
+      const segments = [
+        start,
+        end,
+        start.clone().sub(halfTick),
+        start.clone().add(halfTick),
+        end.clone().sub(halfTick),
+        end.clone().add(halfTick),
+      ];
+      const line = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(segments), mat);
+      line.renderOrder = 20;
+      scene.add(line);
+    };
+
+    // 5B. Dedicated Between-Plot & Fronting Road Width Measurement Callout (100% Unobstructed, alwaysOnTop)
+    const roadDimY = 1.08;
+    const halfRoad = roadThickness / 2;
+    const roadWidthCalloutText = extractRoadWidthMeters(plot.road);
+    if (isHorizontalRoad) {
+      const roadDimX = pw / 2 + 1.85;
+      const z1 = roadMesh.position.z - halfRoad;
+      const z2 = roadMesh.position.z + halfRoad;
+      addDimensionLine(
+        new THREE.Vector3(roadDimX, roadDimY, z1),
+        new THREE.Vector3(roadDimX, roadDimY, z2),
+        new THREE.Vector3(1, 0, 0),
+        0xf5d47a,
+      );
+      const roadWidthSprite = createLabelSprite(renderer, roadWidthCalloutText, 6.2, 1.24, {
+        bg: "rgba(8, 18, 13, 0.98)",
+        borderColor: "#F5D47A",
+        textColor: "#FFF5D6",
+        accent: true,
+        alwaysOnTop: true,
+        renderOrder: 26,
+        fontSize: 40,
+      });
+      roadWidthSprite.position.set(roadDimX + 1.4, 2.05, roadMesh.position.z);
+      scene.add(roadWidthSprite);
+    } else {
+      const roadDimZ = pd / 2 + 1.85;
+      const x1 = roadMesh.position.x - halfRoad;
+      const x2 = roadMesh.position.x + halfRoad;
+      addDimensionLine(
+        new THREE.Vector3(x1, roadDimY, roadDimZ),
+        new THREE.Vector3(x2, roadDimY, roadDimZ),
+        new THREE.Vector3(0, 0, 1),
+        0xf5d47a,
+      );
+      const roadWidthSprite = createLabelSprite(renderer, roadWidthCalloutText, 6.2, 1.24, {
+        bg: "rgba(8, 18, 13, 0.98)",
+        borderColor: "#F5D47A",
+        textColor: "#FFF5D6",
+        accent: true,
+        alwaysOnTop: true,
+        renderOrder: 26,
+        fontSize: 40,
+      });
+      roadWidthSprite.position.set(roadMesh.position.x, 2.05, roadDimZ + 1.35);
+      scene.add(roadWidthSprite);
+    }
+
+    // Road frontage banner elevated above the center of the fronting road
+    const roadLabel = createLabelSprite(renderer, plot.road.toUpperCase(), 7.4, 1.38, {
+      bg: "rgba(8, 18, 13, 0.98)",
       borderColor: "#F5D47A",
       textColor: "#FFF5D6",
       accent: true,
       alwaysOnTop: true,
-      renderOrder: 22,
-      fontSize: 48,
+      renderOrder: 25,
+      fontSize: 44,
     });
-    roadLabel.position.set(roadMesh.position.x, 2.55, roadMesh.position.z);
+    roadLabel.position.set(roadMesh.position.x, 3.05, roadMesh.position.z);
     scene.add(roadLabel);
 
     const lamp = buildStreetLamp(0.75);
     lamp.position.set(
-      plot.faces === "E" ? pw / 2 + 1.0 : plot.faces === "W" ? -pw / 2 - 1.0 : pw / 2 + 0.9,
+      plot.faces === "E" ? pw / 2 + 1.05 : plot.faces === "W" ? -pw / 2 - 1.05 : -pw / 2 - 0.95,
       0.56,
-      plot.faces === "N" ? -pd / 2 - 1.0 : plot.faces === "S" ? pd / 2 + 1.0 : -pd / 2 + 0.8,
+      plot.faces === "N" ? -pd / 2 - 1.05 : plot.faces === "S" ? pd / 2 + 1.05 : -pd / 2 + 0.8,
     );
     scene.add(lamp);
 
-    const accentTree = buildCompositeTree(0.85, 0.5);
+    const accentTree = buildCompositeTree(0.82, 0.5);
     accentTree.position.set(-pw / 2 + 1.3, 0.95, -pd / 2 + 1.3);
     scene.add(accentTree);
 
-    // 6. 3D Measurement Dimension Bars (Width & Depth in meters & feet)
+    // 6. 3D Measurement Dimension Bars (Width & Depth in meters & feet — alwaysOnTop so zero edge is hidden)
     const widthFt = (plot.w * 3.28084).toFixed(1);
     const depthFt = (plot.d * 3.28084).toFixed(1);
-    const dimMat = new THREE.LineBasicMaterial({ color: 0xe5c77b });
 
-    // Width bar (along X)
-    const widthZ = plot.faces === "S" ? -pd / 2 - 1.6 : pd / 2 + 1.6;
-    const widthLineGeo = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-pw / 2, 1.05, widthZ),
-      new THREE.Vector3(pw / 2, 1.05, widthZ),
-    ]);
-    scene.add(new THREE.Line(widthLineGeo, dimMat));
+    // Width bar (along X, placed cleanly on the opposite side of the fronting road)
+    const widthZ = plot.faces === "S" ? -pd / 2 - 1.85 : pd / 2 + 1.85;
+    addDimensionLine(
+      new THREE.Vector3(-pw / 2, 1.12, widthZ),
+      new THREE.Vector3(pw / 2, 1.12, widthZ),
+      new THREE.Vector3(0, 0, 1),
+      0xe5c77b,
+    );
 
-    const widthSprite = createLabelSprite(renderer, `${plot.w}m (${widthFt} ft)`, 4.9, 1.28, {
-      bg: "rgba(9, 18, 14, 0.95)",
-      borderColor: "rgba(212, 175, 95, 0.65)",
+    const widthSprite = createLabelSprite(renderer, `WIDTH: ${plot.w}m (${widthFt} ft)`, 5.4, 1.24, {
+      bg: "rgba(9, 18, 14, 0.98)",
+      borderColor: "rgba(212, 175, 95, 0.85)",
       textColor: "#FAF8F2",
-      renderOrder: 14,
+      alwaysOnTop: true,
+      renderOrder: 24,
+      fontSize: 38,
     });
-    widthSprite.position.set(0, 1.85, widthZ);
+    widthSprite.position.set(0, 2.18, widthZ);
     scene.add(widthSprite);
 
-    // Depth bar (along Z)
-    const depthX = plot.faces === "E" ? -pw / 2 - 1.7 : pw / 2 + 1.7;
-    const depthLineGeo = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(depthX, 1.05, -pd / 2),
-      new THREE.Vector3(depthX, 1.05, pd / 2),
-    ]);
-    scene.add(new THREE.Line(depthLineGeo, dimMat));
+    // Depth bar (along Z, placed cleanly on the opposite side of the fronting road)
+    const depthX = plot.faces === "E" ? -pw / 2 - 1.95 : pw / 2 + 1.95;
+    addDimensionLine(
+      new THREE.Vector3(depthX, 1.12, -pd / 2),
+      new THREE.Vector3(depthX, 1.12, pd / 2),
+      new THREE.Vector3(1, 0, 0),
+      0xe5c77b,
+    );
 
-    const depthSprite = createLabelSprite(renderer, `${plot.d}m (${depthFt} ft)`, 4.9, 1.28, {
-      bg: "rgba(9, 18, 14, 0.95)",
-      borderColor: "rgba(212, 175, 95, 0.65)",
+    const depthSprite = createLabelSprite(renderer, `DEPTH: ${plot.d}m (${depthFt} ft)`, 5.4, 1.24, {
+      bg: "rgba(9, 18, 14, 0.98)",
+      borderColor: "rgba(212, 175, 95, 0.85)",
       textColor: "#FAF8F2",
-      renderOrder: 14,
+      alwaysOnTop: true,
+      renderOrder: 24,
+      fontSize: 38,
     });
-    depthSprite.position.set(depthX, 1.85, 0);
+    depthSprite.position.set(depthX, 2.18, 0);
     scene.add(depthSprite);
 
     // 7. Full 360° Engraved Brass Compass Ring around the Plot Pedestal
-    const compassRadius = Math.max(pw, pd) * 0.68 + 2.4;
+    const compassRadius = Math.max(pw, pd) * 0.72 + 3.4;
     const compassRing = buildCompassMonument(compassRadius);
     compassRing.position.set(0, -0.1, 0);
     scene.add(compassRing);
 
     const cardinals: Array<[string, number, number, boolean]> = [
-      ["N", 0, -compassRadius - 1.15, true],
-      ["S", 0, compassRadius + 1.15, false],
-      ["E", compassRadius + 1.15, 0, false],
-      ["W", -compassRadius - 1.15, 0, false],
+      ["N", 0, -compassRadius - 1.25, true],
+      ["S", 0, compassRadius + 1.25, false],
+      ["E", compassRadius + 1.25, 0, false],
+      ["W", -compassRadius - 1.25, 0, false],
     ];
     cardinals.forEach(([txt, x, z, isNorth]) => {
-      const sp = createLabelSprite(renderer, txt, 2.3, 1.35, { accent: isNorth });
-      sp.position.set(x, 0.75, z);
+      const sp = createLabelSprite(renderer, txt, 2.3, 1.32, {
+        accent: isNorth,
+        alwaysOnTop: true,
+        renderOrder: 22,
+      });
+      sp.position.set(x, 1.05, z);
       scene.add(sp);
     });
 
@@ -400,8 +513,15 @@ export default function PlotPopout3DModal({
       controls.autoRotate = autoRotateRef.current && !isSoftwareGl;
       controls.update();
 
+      // Keep pan target cleanly inside plot + road + compass envelope so outer edges stay reachable without losing scene
+      controls.target.x = THREE.MathUtils.clamp(controls.target.x, -panLimit, panLimit);
+      controls.target.z = THREE.MathUtils.clamp(controls.target.z, -panLimit, panLimit);
+      controls.target.y = THREE.MathUtils.clamp(controls.target.y, 0.2, 3.6);
+
       // Compute camera azimuth relative to True North (-Z)
-      const angleRad = Math.atan2(camera.position.x, camera.position.z);
+      const relX = camera.position.x - controls.target.x;
+      const relZ = camera.position.z - controls.target.z;
+      const angleRad = Math.atan2(relX, relZ);
       const deg = Math.round(((THREE.MathUtils.radToDeg(angleRad) % 360) + 360) % 360);
       if (deg !== lastAzimuthRounded) {
         lastAzimuthRounded = deg;
@@ -430,7 +550,12 @@ export default function PlotPopout3DModal({
       asphaltTex.dispose();
       shadowTex.dispose();
       scene.traverse((obj) => {
-        if (obj instanceof THREE.Mesh || obj instanceof THREE.Line || obj instanceof THREE.Sprite) {
+        if (
+          obj instanceof THREE.Mesh ||
+          obj instanceof THREE.Line ||
+          obj instanceof THREE.LineSegments ||
+          obj instanceof THREE.Sprite
+        ) {
           obj.geometry.dispose();
           const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
           mats.forEach((m) => {
@@ -469,8 +594,18 @@ export default function PlotPopout3DModal({
   const resetOrbit = () => {
     const ctrl = controlsRef.current;
     if (!ctrl) return;
-    ctrl.object.position.set(16, 13.5, 19);
-    ctrl.target.set(0, 0.8, 0);
+    ctrl.object.position.set(19.5, 16.8, 23.5);
+    ctrl.target.set(0, 0.9, 0);
+    ctrl.update();
+  };
+
+  const zoomCamera = (factor: number) => {
+    const ctrl = controlsRef.current;
+    if (!ctrl) return;
+    const offset = ctrl.object.position.clone().sub(ctrl.target);
+    const nextDist = THREE.MathUtils.clamp(offset.length() * factor, 7.5, 58);
+    offset.setLength(nextDist);
+    ctrl.object.position.copy(ctrl.target).add(offset);
     ctrl.update();
   };
 
@@ -483,305 +618,365 @@ export default function PlotPopout3DModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="popout-plot-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-6"
+      data-lenis-prevent
+      data-lenis-prevent-wheel
+      data-lenis-prevent-touch
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 sm:p-4 lg:p-6"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative grid max-h-[94svh] w-full max-w-6xl grid-cols-1 overflow-hidden rounded-2xl border border-[#D4AF5F]/30 bg-[#0b120f] text-[#F2EFE7] lg:grid-cols-12">
-        {/* Left: Full 360° Interactive Three.js Plot Pedestal */}
-        <div className="relative min-h-[360px] bg-[#08100d] lg:col-span-7 lg:min-h-[640px]">
+      <div
+        data-lenis-prevent
+        data-lenis-prevent-wheel
+        data-lenis-prevent-touch
+        className="relative flex h-[94svh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-[#D4AF5F]/30 bg-[#0b120f] text-[#F2EFE7] sm:rounded-3xl lg:grid lg:h-[min(90svh,820px)] lg:min-h-[540px] lg:grid-cols-12"
+      >
+        {/* Left / Top: Full 360° Interactive Three.js Plot Pedestal */}
+        <div className="relative h-[38svh] min-h-[235px] max-h-[340px] w-full shrink-0 bg-[#08100d] sm:h-[42svh] sm:max-h-[380px] lg:col-span-7 lg:h-full lg:max-h-none lg:min-h-0">
           <div ref={stageRef} className="h-full w-full" />
 
-          {/* Top-Left Parcel Header (solid rgba, zero backdrop-filter over WebGL) */}
-          <div className="pointer-events-none absolute top-4 left-4 right-16 flex flex-wrap items-center justify-between gap-2">
-            <div className="rounded-lg border border-[#D4AF5F]/25 bg-[#0a1410]/95 px-3.5 py-2">
-              <p className="text-[11px] tracking-wider text-[#D4AF5F]">
+          {/* Top-Left Parcel Header & Top-Right Compass + Mobile Close */}
+          <div className="pointer-events-none absolute top-3 left-3 right-3 flex items-start justify-between gap-2 sm:top-4 sm:left-4 sm:right-4">
+            <div className="min-w-0 rounded-xl border border-[#D4AF5F]/25 bg-[#0a1410]/95 px-2.5 py-1.5 sm:px-3.5 sm:py-2">
+              <p className="truncate text-[10px] font-medium text-[#D4AF5F] sm:text-[11px]">
                 {project.name}
-                {plot.wing ? ` · ${plot.wing}` : ""} · 360° Land Inspector
+                {plot.wing ? ` · ${plot.wing}` : ""}
               </p>
-              <div className="flex items-center gap-2.5">
-                <h3 id="popout-plot-title" className="text-2xl font-normal text-[#F7F4EC]">
+              <div className="flex items-center gap-2">
+                <h3
+                  id="popout-plot-title"
+                  className="text-base font-semibold tracking-tight text-[#F7F4EC] sm:text-xl"
+                >
                   Plot {plot.displayNo ?? plot.no}
                 </h3>
                 {plot.status === "sold" ? (
-                  <span className="rounded border border-[#C9735B]/60 bg-[#76261C]/85 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-[#F7E8D0] uppercase">
-                    Sold Out · Allotted
+                  <span className="rounded-md border border-[#C9735B]/60 bg-[#76261C]/85 px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-[#F7E8D0] uppercase sm:px-2 sm:text-[10px]">
+                    Sold Out
                   </span>
                 ) : null}
               </div>
             </div>
 
-            {/* Live Synchronized Rotational Compass Dial */}
-            <div className="flex items-center gap-3 rounded-lg border border-[#D4AF5F]/30 bg-[#0a1410]/95 px-3.5 py-2">
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[#D4AF5F]/40 bg-[#070d0a]">
-                <span className="absolute top-0.5 text-[8px] font-bold text-[#E5C77B]">N</span>
-                <span className="absolute bottom-0.5 text-[8px] text-[#7c8c81]">S</span>
-                <span className="absolute right-1 text-[8px] text-[#7c8c81]">E</span>
-                <span className="absolute left-1 text-[8px] text-[#7c8c81]">W</span>
-                <div
-                  style={{ transform: `rotate(${-cameraAzimuth}deg)` }}
-                  className="h-6 w-0.5 origin-center transition-transform duration-75"
-                >
-                  <div className="h-3 w-full rounded-t bg-[#E5C77B]" />
-                  <div className="h-3 w-full rounded-b bg-[#48594f]" />
+            <div className="pointer-events-auto flex items-start gap-2">
+              {/* Live Synchronized Rotational Compass Dial */}
+              <div className="flex items-center gap-2 rounded-xl border border-[#D4AF5F]/30 bg-[#0a1410]/95 px-2.5 py-1.5 sm:gap-2.5 sm:px-3">
+                <div className="relative flex h-8 w-8 items-center justify-center rounded-full border border-[#D4AF5F]/40 bg-[#070d0a] sm:h-10 sm:w-10">
+                  <span className="absolute top-0.5 text-[7px] font-bold text-[#E5C77B] sm:text-[8px]">
+                    N
+                  </span>
+                  <span className="absolute bottom-0.5 text-[7px] text-[#7c8c81] sm:text-[8px]">
+                    S
+                  </span>
+                  <span className="absolute right-1 text-[7px] text-[#7c8c81] sm:text-[8px]">E</span>
+                  <span className="absolute left-1 text-[7px] text-[#7c8c81] sm:text-[8px]">W</span>
+                  <div
+                    style={{ transform: `rotate(${-cameraAzimuth}deg)` }}
+                    className="h-4 w-0.5 origin-center transition-transform duration-75 sm:h-5"
+                  >
+                    <div className="h-2 w-full rounded-t bg-[#E5C77B] sm:h-2.5" />
+                    <div className="h-2 w-full rounded-b bg-[#48594f] sm:h-2.5" />
+                  </div>
+                </div>
+                <div className="hidden text-xs sm:block">
+                  <p className="font-mono-tabular font-medium text-[#E5C77B]">
+                    {String(cameraAzimuth).padStart(3, "0")}° {azimuthToCardinal(cameraAzimuth)}
+                  </p>
+                  <p className="text-[11px] text-[#B6C3BA]">
+                    {FACING_LABEL[plot.faces]} ({FACING_AZIMUTH[plot.faces]}°)
+                  </p>
                 </div>
               </div>
-              <div className="text-xs">
-                <p className="font-mono-tabular text-[#E5C77B]">
-                  {String(cameraAzimuth).padStart(3, "0")}° {azimuthToCardinal(cameraAzimuth)}
-                </p>
-                <p className="text-[11px] text-[#B6C3BA]">
-                  Fronts {FACING_LABEL[plot.faces]} ({FACING_AZIMUTH[plot.faces]}°)
-                </p>
-              </div>
+
+              {/* Mobile / Tablet Quick Close Button */}
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close 360 plot inspector"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-[#0a1410]/95 text-[#E6E3D7] transition-colors hover:border-[#D4AF5F] hover:text-[#D4AF5F] lg:hidden"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           </div>
 
-          {/* Compact Bottom Control Bar over 360° Canvas */}
-          <div className="absolute inset-x-4 bottom-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-[#0a1410]/95 px-3.5 py-2 text-xs">
-            <span className="text-[#AEBBAE]">Drag to orbit 360° · Scroll to zoom</span>
-            <div className="flex items-center gap-2">
+          {/* Compact Bottom Control Bar: Orbit + Pan + Zoom +/- + Reset */}
+          <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#0a1410]/95 px-2.5 py-1.5 text-xs sm:inset-x-4 sm:bottom-4 sm:px-3.5 sm:py-2">
+            <span className="hidden items-center gap-1.5 text-[11px] text-[#B6C4BA] sm:inline-flex">
+              <Move className="h-3.5 w-3.5 text-[#D4AF5F]" aria-hidden="true" />
+              <span>Drag to rotate · Right-drag or 2 fingers to pan</span>
+            </span>
+            <span className="inline-flex items-center gap-1 text-[10px] text-[#B6C4BA] sm:hidden">
+              <Move className="h-3 w-3 text-[#D4AF5F]" aria-hidden="true" />
+              <span>Drag to rotate</span>
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                aria-label="Zoom in"
+                onClick={() => zoomCamera(0.8)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-[#12201a] text-[#E9E6DA] hover:border-[#D4AF5F]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Zoom out"
+                onClick={() => zoomCamera(1.24)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-[#12201a] text-[#E9E6DA] hover:border-[#D4AF5F]"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </button>
               <button
                 type="button"
                 onClick={() => setAutoRotate((a) => !a)}
-                className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-[#12201a] px-2.5 py-1 text-xs font-medium text-[#E9E6DA] hover:border-[#D4AF5F]/50"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/15 bg-[#12201a] px-2.5 text-xs font-medium text-[#E9E6DA] hover:border-[#D4AF5F]/60"
               >
                 {autoRotate ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                <span>{autoRotate ? "Pause Spin" : "360° Spin"}</span>
+                <span>{autoRotate ? "Pause" : "Spin"}</span>
               </button>
               <button
                 type="button"
                 onClick={resetOrbit}
-                className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-[#12201a] px-2.5 py-1 text-xs font-medium text-[#E9E6DA] hover:border-[#D4AF5F]/50"
+                className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/15 bg-[#12201a] px-2.5 text-xs font-medium text-[#E9E6DA] hover:border-[#D4AF5F]/60"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                <span>Reset</span>
+                <span className="hidden sm:inline">Reset</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* Right: Plot Specifications, Share & Live Budget + Loan Estimator */}
-        <div className="flex max-h-[58svh] flex-col overflow-y-auto border-t border-white/10 bg-[#101814] p-5 sm:p-6 lg:col-span-5 lg:max-h-[94svh] lg:border-t-0 lg:border-l">
-          <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4">
-            <div>
-              <div className="flex items-center gap-2 text-xs text-[#C7D1C9]">
+        {/* Right / Bottom: Plot Specifications & Live Budget + Loan Estimator */}
+        <div className="flex min-h-0 flex-1 flex-col border-t border-white/10 bg-[#101814] lg:col-span-5 lg:h-full lg:border-t-0 lg:border-l">
+          {/* Sticky Compact Status Header */}
+          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-white/10 bg-[#101814] px-4 py-3.5 sm:px-6 sm:py-4">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-[#C7D1C9]">
                 <span
-                  className="inline-block h-2.5 w-2.5 rounded-xs"
+                  className="inline-block h-2.5 w-2.5 shrink-0 rounded-xs"
                   style={{ backgroundColor: statusInfo.color }}
                 />
-                <span className="font-medium text-white">{statusInfo.label}</span>
+                <span className="font-semibold text-white">{statusInfo.label}</span>
                 <span aria-hidden="true">·</span>
                 <span>{statusInfo.badgeText}</span>
               </div>
-              <p className="mt-1.5 text-xs text-[#9FB0A4]">{plot.vastuNote}</p>
+              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[#9FB0A4]">
+                {plot.vastuNote}
+              </p>
             </div>
 
             <button
               type="button"
               onClick={onClose}
               aria-label="Close 360 plot inspector"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-[#16231d] text-[#E6E3D7] transition-colors hover:border-[#D4AF5F] hover:text-[#D4AF5F]"
+              className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-[#16231d] text-[#E6E3D7] transition-colors hover:border-[#D4AF5F] hover:text-[#D4AF5F] lg:flex"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Measurements Grid */}
-          <div className="mt-4 grid grid-cols-2 gap-3 border-b border-white/10 pb-4 text-xs">
-            <div className="rounded-lg border border-white/10 bg-[#0b120f] p-3">
-              <div className="flex items-center gap-1.5 text-[#98A99D]">
-                <Maximize2 className="h-3.5 w-3.5 text-[#D4AF5F]" />
-                <span>Dimensions</span>
-              </div>
-              <p className="font-mono-tabular mt-1 text-sm font-medium text-white">
-                {plot.w}m × {plot.d}m
-              </p>
-              <p className="font-mono-tabular text-[11px] text-[#98A99D]">
-                {widthFt} ft × {depthFt} ft
-              </p>
-            </div>
-            <div className="rounded-lg border border-white/10 bg-[#0b120f] p-3">
-              <div className="flex items-center gap-1.5 text-[#98A99D]">
-                <Compass className="h-3.5 w-3.5 text-[#D4AF5F]" />
-                <span>Plot Area</span>
-              </div>
-              <p className="font-mono-tabular mt-1 text-sm font-medium text-white">
-                {plot.areaSqFt.toLocaleString("en-IN")} sq.ft
-              </p>
-              <p className="font-mono-tabular text-[11px] text-[#98A99D]">
-                {plot.areaSqM} sq.m · {plot.category ?? "Residential"} · {plot.corner ? "Corner" : "Standard"}
-                {plot.parkFacing ? " / Park" : ""}
-              </p>
-            </div>
-            <div className="col-span-2 flex items-center justify-between rounded-lg border border-white/10 bg-[#0b120f] px-3 py-2">
-              <span className="text-[#98A99D]">Frontage Road &amp; Orientation</span>
-              <span className="font-mono-tabular font-medium text-[#E5C77B]">
-                {plot.road} · {FACING_LABEL[plot.faces]}
-              </span>
-            </div>
-          </div>
-
-          {/* Instant Budget & Home Loan EMI Calculator */}
-          <div className="mt-4 space-y-3.5">
-            <div className="flex items-baseline justify-between">
-              <h4 className="font-display text-xl text-[#F5F2E9]">Budget &amp; Loan Estimate</h4>
-              <span className="font-mono-tabular text-xs text-[#D4AF5F]">
-                PLC {plot.plcPercent}%
-              </span>
-            </div>
-
-            <div className="space-y-3 rounded-xl border border-white/10 bg-[#0b120f] p-4">
-              <div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-[#A8B7AC]">Indicative Rate / sq.ft</span>
-                  <span className="font-mono-tabular font-medium text-white">
-                    {formatINR(ratePerSqFt)}
-                  </span>
+          {/* Independently Scrollable Body (Trackpad / Wheel / Touch Ready) */}
+          <div
+            data-lenis-prevent
+            data-lenis-prevent-wheel
+            data-lenis-prevent-touch
+            className="modal-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5"
+          >
+            {/* Measurements Grid */}
+            <div className="grid grid-cols-2 gap-2.5 border-b border-white/10 pb-4 text-xs sm:gap-3">
+              <div className="rounded-xl border border-white/10 bg-[#0b120f] p-3">
+                <div className="flex items-center gap-1.5 text-[#98A99D]">
+                  <Maximize2 className="h-3.5 w-3.5 shrink-0 text-[#D4AF5F]" />
+                  <span>Dimensions</span>
                 </div>
-                <input
-                  type="range"
-                  aria-label="Indicative Rate per square foot"
-                  min={1400}
-                  max={4000}
-                  step={10}
-                  value={ratePerSqFt}
-                  onChange={(e) => {
-                    setRatePerSqFt(Number(e.target.value));
-                    trackEvent({
-                      type: "calculator_update",
-                      page: `/projects/${project.slug}`,
-                      project: project.slug,
-                      plotNumber: plot.no,
-                    });
-                  }}
-                  className="estate-slider mt-1.5 w-full"
-                />
+                <p className="font-mono-tabular mt-1 text-sm font-semibold text-white">
+                  {plot.w}m × {plot.d}m
+                </p>
+                <p className="font-mono-tabular text-[11px] text-[#98A99D]">
+                  {widthFt} ft × {depthFt} ft
+                </p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-[#0b120f] p-3">
+                <div className="flex items-center gap-1.5 text-[#98A99D]">
+                  <Compass className="h-3.5 w-3.5 shrink-0 text-[#D4AF5F]" />
+                  <span>Plot Area</span>
+                </div>
+                <p className="font-mono-tabular mt-1 text-sm font-semibold text-white">
+                  {plot.areaSqFt.toLocaleString("en-IN")} sq.ft
+                </p>
+                <p className="font-mono-tabular text-[11px] text-[#98A99D]">
+                  {plot.areaSqM} sq.m · {plot.category ?? "Residential"}
+                </p>
+              </div>
+              <div className="col-span-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#0b120f] px-3.5 py-2.5">
+                <span className="text-[#98A99D]">Front Road &amp; Direction</span>
+                <span className="font-mono-tabular font-semibold text-[#E5C77B]">
+                  {plot.road} · {FACING_LABEL[plot.faces]}
+                </span>
+              </div>
+            </div>
+
+            {/* Instant Budget & Home Loan EMI Calculator */}
+            <div className="mt-4 space-y-3.5">
+              <div className="flex items-baseline justify-between">
+                <h4 className="text-base font-semibold tracking-tight text-[#F5F2E9]">
+                  Budget &amp; EMI Estimate
+                </h4>
+                <span className="font-mono-tabular text-xs text-[#D4AF5F]">
+                  PLC {plot.plcPercent}%
+                </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-[#0b120f] p-3.5 sm:p-4">
                 <div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-[#A8B7AC]">Down Payment</span>
-                    <span className="font-mono-tabular text-white">{downPaymentPct}%</span>
+                    <span className="text-[#A8B7AC]">Indicative Rate / sq.ft</span>
+                    <span className="font-mono-tabular font-semibold text-white">
+                      {formatINR(ratePerSqFt)}
+                    </span>
                   </div>
                   <input
                     type="range"
-                    aria-label="Down Payment Percentage"
-                    min={15}
-                    max={80}
-                    step={5}
-                    value={downPaymentPct}
-                    onChange={(e) => setDownPaymentPct(Number(e.target.value))}
-                    className="estate-slider mt-1.5 w-full"
+                    aria-label="Indicative Rate per square foot"
+                    min={1400}
+                    max={4000}
+                    step={10}
+                    value={ratePerSqFt}
+                    onChange={(e) => {
+                      setRatePerSqFt(Number(e.target.value));
+                      trackEvent({
+                        type: "calculator_update",
+                        page: `/projects/${project.slug}`,
+                        project: project.slug,
+                        plotNumber: plot.no,
+                      });
+                    }}
+                    className="estate-slider mt-2 w-full"
                   />
                 </div>
-                <div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[#A8B7AC]">Loan Tenure</span>
-                    <span className="font-mono-tabular text-white">{tenureYears} yrs</span>
-                  </div>
-                  <input
-                    type="range"
-                    aria-label="Loan Tenure in Years"
-                    min={5}
-                    max={25}
-                    step={1}
-                    value={tenureYears}
-                    onChange={(e) => setTenureYears(Number(e.target.value))}
-                    className="estate-slider mt-1.5 w-full"
-                  />
-                </div>
-              </div>
 
-              <div className="flex items-center justify-between gap-2 pt-1 text-xs">
-                <label className="flex cursor-pointer items-center gap-2 text-[#B8C4BB]">
-                  <input
-                    type="checkbox"
-                    checked={womenConcession}
-                    onChange={(e) => setWomenConcession(e.target.checked)}
-                    className="h-3.5 w-3.5 accent-[#D4AF5F]"
-                  />
-                  <span>Maharashtra Women Buyer (5% Stamp Duty)</span>
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <label htmlFor="plot-roi-input" className="text-[#8E9F93]">
-                    ROI
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-[#A8B7AC]">Down Payment</span>
+                      <span className="font-mono-tabular text-white">{downPaymentPct}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      aria-label="Down Payment Percentage"
+                      min={15}
+                      max={80}
+                      step={5}
+                      value={downPaymentPct}
+                      onChange={(e) => setDownPaymentPct(Number(e.target.value))}
+                      className="estate-slider mt-2 w-full"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-[#A8B7AC]">Loan Tenure</span>
+                      <span className="font-mono-tabular text-white">{tenureYears} yrs</span>
+                    </div>
+                    <input
+                      type="range"
+                      aria-label="Loan Tenure in Years"
+                      min={5}
+                      max={25}
+                      step={1}
+                      value={tenureYears}
+                      onChange={(e) => setTenureYears(Number(e.target.value))}
+                      className="estate-slider mt-2 w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                  <label className="flex cursor-pointer items-center gap-2 text-[#B8C4BB]">
+                    <input
+                      type="checkbox"
+                      checked={womenConcession}
+                      onChange={(e) => setWomenConcession(e.target.checked)}
+                      className="h-3.5 w-3.5 accent-[#D4AF5F]"
+                    />
+                    <span>Women Buyer (5% Stamp Duty)</span>
                   </label>
-                  <input
-                    id="plot-roi-input"
-                    type="number"
-                    min={7}
-                    max={14}
-                    step={0.1}
-                    value={interestRate}
-                    onChange={(e) => setInterestRate(Number(e.target.value) || 8.85)}
-                    className="font-mono-tabular w-16 rounded border border-white/15 bg-[#121c17] px-1.5 py-0.5 text-right text-xs text-white"
-                  />
-                  <span className="text-[#8E9F93]">%</span>
+                  <div className="flex items-center gap-1.5">
+                    <label htmlFor="plot-roi-input" className="text-[#8E9F93]">
+                      ROI
+                    </label>
+                    <input
+                      id="plot-roi-input"
+                      type="number"
+                      min={7}
+                      max={14}
+                      step={0.1}
+                      value={interestRate}
+                      onChange={(e) => setInterestRate(Number(e.target.value) || 8.85)}
+                      className="font-mono-tabular w-16 rounded-md border border-white/15 bg-[#121c17] px-1.5 py-0.5 text-right text-xs text-white"
+                    />
+                    <span className="text-[#8E9F93]">%</span>
+                  </div>
                 </div>
               </div>
+
+              {/* Cost & EMI Summary Output */}
+              <div className="grid grid-cols-2 gap-3 rounded-2xl border border-[#D4AF5F]/30 bg-[#14201a] p-3.5 sm:p-4">
+                <div>
+                  <p className="text-[11px] text-[#AEBBAE]">All-Inclusive Estimate*</p>
+                  <p className="font-mono-tabular mt-0.5 text-base font-semibold text-[#F5F2E9] sm:text-lg">
+                    {formatINRCompact(finance.totalAcquisitionCost)}
+                  </p>
+                  <p className="font-mono-tabular mt-0.5 text-[11px] text-[#96A79A]">
+                    Stamp + Reg: {formatINRCompact(finance.stampDuty + finance.registrationFee)}
+                  </p>
+                </div>
+                <div className="border-l border-white/10 pl-3">
+                  <p className="text-[11px] text-[#D4AF5F]">Est. Monthly EMI*</p>
+                  <p className="font-mono-tabular mt-0.5 text-base font-semibold text-[#E5C77B] sm:text-lg">
+                    {formatINR(finance.monthlyEmi)}
+                  </p>
+                  <p className="font-mono-tabular mt-0.5 text-[11px] text-[#96A79A]">
+                    Loan: {formatINRCompact(finance.loanPrincipal)}
+                  </p>
+                </div>
+              </div>
+
+              <LoanPartnerBanks variant="compact" />
+              <PricingDisclaimer variant="compact" surface="dark" />
             </div>
 
-            {/* Cost & EMI Summary Output */}
-            <div className="grid grid-cols-2 gap-3 rounded-xl border border-[#D4AF5F]/30 bg-[#14201a] p-4">
-              <div>
-                <p className="text-[11px] text-[#AEBBAE]">All-Inclusive Estimate</p>
-                <p className="font-mono-tabular mt-0.5 text-lg font-semibold text-[#F5F2E9]">
-                  {formatINRCompact(finance.totalAcquisitionCost)}
-                </p>
-                <p className="font-mono-tabular mt-0.5 text-[11px] text-[#96A79A]">
-                  Stamp + Reg: {formatINRCompact(finance.stampDuty + finance.registrationFee)}
-                </p>
-              </div>
-              <div className="border-l border-white/10 pl-3">
-                <p className="text-[11px] text-[#D4AF5F]">Est. Monthly Loan EMI</p>
-                <p className="font-mono-tabular mt-0.5 text-lg font-semibold text-[#E5C77B]">
-                  {formatINR(finance.monthlyEmi)}
-                </p>
-                <p className="font-mono-tabular mt-0.5 text-[11px] text-[#96A79A]">
-                  Loan: {formatINRCompact(finance.loanPrincipal)}
-                </p>
-              </div>
+            {/* Primary Actions */}
+            <div className="mt-5 flex flex-col gap-2.5 pb-2">
+              <button
+                type="button"
+                onClick={() => onReservePlot(plot, finance.totalAcquisitionCost, true)}
+                className="min-h-[46px] w-full rounded-xl bg-[#D4AF5F] px-4 py-3 text-sm font-semibold text-[#080C0A] transition-colors hover:bg-[#e5c77b]"
+              >
+                {plot.status === "sold"
+                  ? `See Similar Open Plots to Plot ${plot.displayNo ?? plot.no}`
+                  : `Get Written Cost Sheet for Plot ${plot.displayNo ?? plot.no}`}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleShare}
+                className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-[#15221c] px-4 py-2.5 text-xs font-medium text-[#EFECE2] transition-colors hover:border-[#D4AF5F]/60"
+              >
+                {copiedShare ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 text-[#6FA07A]" />
+                    <span>Plot Details &amp; 360° Link Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <WhatsAppIcon className="h-3.5 w-3.5 text-[#25D366]" />
+                    <Share2 className="h-3.5 w-3.5 text-[#D4AF5F]" />
+                    <span>Share Plot Details on WhatsApp</span>
+                  </>
+                )}
+              </button>
             </div>
-            {/* Eligible Nagpur Plot Loan Banks */}
-            <LoanPartnerBanks variant="compact" />
-
-            {/* Mandatory Business & Customer Protection Pricing Disclaimer */}
-            <PricingDisclaimer variant="compact" surface="dark" />
-          </div>
-
-          {/* Primary Actions */}
-          <div className="mt-5 flex flex-col gap-2.5 pt-2">
-            <button
-              type="button"
-              onClick={() => onReservePlot(plot, finance.totalAcquisitionCost, true)}
-              className="min-h-[46px] w-full rounded-lg bg-[#D4AF5F] px-4 py-3 text-sm font-semibold text-[#080C0A] transition-colors hover:bg-[#e5c77b]"
-            >
-              {plot.status === "sold"
-                ? `Inquire Similar Available Plots to Plot ${plot.displayNo ?? plot.no}`
-                : `Request Written Cost Sheet for Plot ${plot.displayNo ?? plot.no}`}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleShare}
-              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-white/15 bg-[#15221c] px-4 py-2.5 text-xs font-medium text-[#EFECE2] transition-colors hover:border-[#D4AF5F]/60"
-            >
-              {copiedShare ? (
-                <>
-                  <Check className="h-3.5 w-3.5 text-[#6FA07A]" />
-                  <span>Plot Brief &amp; 360° Link Copied for WhatsApp</span>
-                </>
-              ) : (
-                <>
-                  <WhatsAppIcon className="h-3.5 w-3.5 text-[#25D366]" />
-                  <Share2 className="h-3.5 w-3.5 text-[#D4AF5F]" />
-                  <span>Share Plot Availability &amp; Price Brief</span>
-                </>
-              )}
-            </button>
           </div>
         </div>
       </div>

@@ -10,6 +10,7 @@ import {
   createAsphaltTexture,
   createGroundTexture,
   createLabelSprite,
+  createRoadLabelMesh,
   detectSoftwareWebGL,
   scheduleAfterDraw,
 } from "./proceduralAssets";
@@ -220,21 +221,18 @@ const MasterLayout3D = forwardRef<MasterLayout3DHandle, Props>(function MasterLa
       scene.add(mesh);
 
       const isWideArterial = /12\.00|18\.00|30\.00/.test(road.label);
-      const label = createLabelSprite(
+      const label = createRoadLabelMesh(
         renderer,
         road.label.toUpperCase(),
-        road.orient === "h" ? (isWideArterial ? 30 : 22) : isWideArterial ? 6.8 : 5.4,
-        road.orient === "h" ? (isWideArterial ? 5.6 : 4.4) : 22,
+        road.w,
+        road.d,
+        road.orient,
         {
-          rotate: road.orient === "v",
-          bg: isWideArterial ? "rgba(8, 18, 13, 0.94)" : "rgba(8, 16, 12, 0.86)",
-          borderColor: isWideArterial ? "#F5D47A" : "rgba(212, 175, 95, 0.55)",
-          textColor: isWideArterial ? "#FFF4D2" : "#F2EFE7",
-          accent: isWideArterial,
-          renderOrder: 12,
+          rotDeg: road.rotDeg,
+          isWideArterial,
         },
       );
-      label.position.set(road.x, isWideArterial ? 2.85 : 2.15, road.z);
+      label.position.set(road.x, 0.34, road.z);
       scene.add(label);
     }
 
@@ -262,8 +260,9 @@ const MasterLayout3D = forwardRef<MasterLayout3DHandle, Props>(function MasterLa
       if (zone.w >= 18) {
         const lbl = createLabelSprite(renderer, zone.label, Math.min(zone.w * 0.72, 34), 5.2, {
           accent: true,
+          renderOrder: 14,
         });
-        lbl.position.set(zone.x, 1.35, zone.z);
+        lbl.position.set(zone.x, 4.2, zone.z);
         scene.add(lbl);
       }
 
@@ -553,10 +552,28 @@ const MasterLayout3D = forwardRef<MasterLayout3DHandle, Props>(function MasterLa
     let easedProgress = 0.14;
     let frameId = 0;
     let disposed = false;
+    let isVisible = true;
+    let loopRunning = false;
     _currentLook.copy(center);
 
+    const startLoop = () => {
+      if (disposed || loopRunning || !isVisible || document.hidden) return;
+      loopRunning = true;
+      clock.getDelta();
+      frameId = window.requestAnimationFrame(tick);
+    };
+
+    const stopLoop = () => {
+      loopRunning = false;
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(frameId);
+    };
+
     const tick = () => {
-      if (disposed) return;
+      if (disposed || !isVisible || document.hidden) {
+        loopRunning = false;
+        return;
+      }
       const dt = Math.min(clock.getDelta(), 0.1);
 
       const targetP = rigRef.current.presetOverride
@@ -639,13 +656,31 @@ const MasterLayout3D = forwardRef<MasterLayout3DHandle, Props>(function MasterLa
       }
     };
 
-    frameId = window.requestAnimationFrame(tick);
+    const io = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        isVisible = Boolean(entry?.isIntersecting);
+        if (isVisible) startLoop();
+        else stopLoop();
+      },
+      { rootMargin: "200px 0px" },
+    );
+    io.observe(host);
+
+    const onVisibilityChange = () => {
+      if (document.hidden) stopLoop();
+      else startLoop();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    startLoop();
 
     return () => {
       disposed = true;
-      window.cancelAnimationFrame(frameId);
-      window.clearTimeout(frameId);
+      stopLoop();
+      io.disconnect();
       ro.disconnect();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);

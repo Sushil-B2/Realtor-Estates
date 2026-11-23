@@ -1,5 +1,7 @@
 import { useState } from "react";
 import {
+  ArrowUp,
+  ArrowUpRight,
   Building2,
   Calculator,
   CalendarCheck,
@@ -13,8 +15,9 @@ import {
   Sun,
   X,
 } from "lucide-react";
-import { PROJECTS } from "../data/projects";
+import { PROJECTS, summarizeLayout } from "../data/projects";
 import { trackEvent } from "../lib/analytics";
+import { scrollToSmooth } from "../hooks/useSmoothScroll";
 import { WhatsAppIcon } from "./PricingDisclaimer";
 
 const BRAND_LOGO_SRC = "/assets/aistudio/Realtor_Estates_8f1cca01.jpeg";
@@ -42,16 +45,16 @@ export function SiteHeader({ onNavigate, onOpenVisitModal, currentPath }: Header
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-black/10 bg-[#F6F5F0]/95 backdrop-blur-md dark:border-[#D4AF5F]/15 dark:bg-[#080C0A]/95">
+      <header className="sticky top-0 z-40 border-b border-black/[0.08] bg-[#F6F5F0]/90 backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#080C0A]/90">
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-[#D4AF5F] focus:px-4 focus:py-2 focus:text-xs focus:font-semibold focus:text-[#080C0A]"
         >
           Skip to main content
         </a>
-        {/* Strict 3-Zone Top Bar Contract: [Uncropped Brand Crest + Tight Wordmark Lockup] — [4 clean single-line links, NO Buyer Guide] — [1 primary CTA] */}
-        <div className="mx-auto flex h-[60px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 md:h-[72px] lg:gap-8 lg:px-10">
-          {/* Zone 1: Full Uncropped Brand Crest Symbol + Tightly Nested Tagline */}
+        {/* Clean 3-Zone Header: [Uncropped Brand Crest + Tight Wordmark] — [4 clean single-line links, NO Buyer Guide] — [1 Primary CTA] */}
+        <div className="mx-auto flex h-[62px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 md:h-[72px] lg:gap-8 lg:px-10">
+          {/* Zone 1: Full Uncropped Brand Crest Symbol + Tightly Nested Smaller Tagline */}
           <a
             href="/"
             onClick={(e) => {
@@ -62,7 +65,7 @@ export function SiteHeader({ onNavigate, onOpenVisitModal, currentPath }: Header
             aria-label="Realtor Estates — Property in Nagpur Home"
             className="group flex min-h-[44px] shrink-0 items-center gap-2.5 whitespace-nowrap sm:gap-3"
           >
-            <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-[#080C0A] ring-1 ring-[#D4AF5F]/40 sm:h-11 sm:w-11 dark:bg-[#080C0A] dark:ring-[#D4AF5F]/30">
+            <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-[#080C0A] ring-1 ring-[#D4AF5F]/40 sm:h-11 sm:w-11 dark:bg-[#080C0A] dark:ring-[#D4AF5F]/30">
               <img
                 src={BRAND_LOGO_SRC}
                 alt="Realtor Estates golden architectural crest symbol"
@@ -73,7 +76,7 @@ export function SiteHeader({ onNavigate, onOpenVisitModal, currentPath }: Header
               />
             </span>
             <span className="flex flex-col items-start justify-center">
-              <span className="font-display text-[21px] leading-[0.95] font-semibold tracking-tight text-[#102018] sm:text-2xl dark:text-[#F4F1E7]">
+              <span className="font-editorial text-[21px] leading-[0.95] font-semibold tracking-tight text-[#102018] sm:text-2xl dark:text-[#F4F1E7]">
                 Realtor Estates
               </span>
               <span className="mt-[2px] text-[8.5px] leading-none font-semibold tracking-[0.19em] text-[#8C6D2E] uppercase sm:text-[9px] dark:text-[#D4AF5F]">
@@ -82,10 +85,10 @@ export function SiteHeader({ onNavigate, onOpenVisitModal, currentPath }: Header
             </span>
           </a>
 
-          {/* Zone 2: Clean single-line navigation links with intuitive real-estate icons */}
+          {/* Zone 2: Clean single-line navigation links with globally recognized real-estate icons */}
           <nav
             aria-label="Primary navigation"
-            className="hidden items-center gap-6 text-sm font-medium text-[#46544C] md:flex lg:gap-8 dark:text-[#B5C1B8]"
+            className="hidden items-center gap-7 text-[13px] font-medium text-[#46544C] md:flex lg:gap-9 dark:text-[#B5C1B8]"
           >
             <a
               href="/"
@@ -93,8 +96,8 @@ export function SiteHeader({ onNavigate, onOpenVisitModal, currentPath }: Header
                 e.preventDefault();
                 onNavigate("/");
               }}
-              className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-colors hover:text-[#102018] hover:underline hover:underline-offset-4 dark:hover:text-[#E5C77B] ${
-                currentPath === "/" ? "text-[#102018] dark:text-[#E5C77B]" : ""
+              className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-colors hover:text-[#102018] dark:hover:text-[#F4F1E7] ${
+                currentPath === "/" ? "font-semibold text-[#102018] dark:text-[#E5C77B]" : ""
               }`}
             >
               <Home className="h-3.5 w-3.5 text-[#8C6D2E] dark:text-[#D4AF5F]" aria-hidden="true" />
@@ -106,21 +109,21 @@ export function SiteHeader({ onNavigate, onOpenVisitModal, currentPath }: Header
                 e.preventDefault();
                 goSection("estates");
               }}
-              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-colors hover:text-[#102018] hover:underline hover:underline-offset-4 dark:hover:text-[#E5C77B]"
+              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-colors hover:text-[#102018] dark:hover:text-[#F4F1E7]"
             >
               <Building2 className="h-3.5 w-3.5 text-[#8C6D2E] dark:text-[#D4AF5F]" aria-hidden="true" />
               <span>Nagpur Plots</span>
             </a>
             <a
-              href="#journey"
+              href="#nagpur-satellite-map"
               onClick={(e) => {
                 e.preventDefault();
-                goSection("journey");
+                goSection("nagpur-satellite-map");
               }}
-              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-colors hover:text-[#102018] hover:underline hover:underline-offset-4 dark:hover:text-[#E5C77B]"
+              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-colors hover:text-[#102018] dark:hover:text-[#F4F1E7]"
             >
               <Compass className="h-3.5 w-3.5 text-[#8C6D2E] dark:text-[#D4AF5F]" aria-hidden="true" />
-              <span>3D Tour</span>
+              <span>Satellite &amp; 3D</span>
             </a>
             <a
               href="#estimator"
@@ -128,7 +131,7 @@ export function SiteHeader({ onNavigate, onOpenVisitModal, currentPath }: Header
                 e.preventDefault();
                 goSection("estimator");
               }}
-              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-colors hover:text-[#102018] hover:underline hover:underline-offset-4 dark:hover:text-[#E5C77B]"
+              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-colors hover:text-[#102018] dark:hover:text-[#F4F1E7]"
             >
               <Calculator className="h-3.5 w-3.5 text-[#8C6D2E] dark:text-[#D4AF5F]" aria-hidden="true" />
               <span>EMI Planner</span>
@@ -143,7 +146,7 @@ export function SiteHeader({ onNavigate, onOpenVisitModal, currentPath }: Header
                 trackEvent({ type: "cta_click", page: currentPath, meta: "header_book_visit" });
                 onOpenVisitModal();
               }}
-              className="hidden min-h-[42px] shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-[#10281E] px-4 py-2.5 text-xs font-semibold text-[#F6F5F0] transition-colors hover:bg-[#193d2e] sm:inline-flex dark:bg-[#D4AF5F] dark:text-[#080C0A] dark:hover:bg-[#e5c77b]"
+              className="hidden min-h-[40px] shrink-0 items-center gap-2 whitespace-nowrap rounded-xl bg-[#10281E] px-4 py-2 text-xs font-semibold text-[#F6F5F0] transition-colors hover:bg-[#193d2e] sm:inline-flex dark:bg-[#D4AF5F] dark:text-[#080C0A] dark:hover:bg-[#e5c77b]"
             >
               <CalendarCheck className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Book Site Visit</span>
@@ -154,7 +157,7 @@ export function SiteHeader({ onNavigate, onOpenVisitModal, currentPath }: Header
               onClick={() => setMobileOpen((o) => !o)}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileOpen}
-              className="flex h-11 w-11 items-center justify-center rounded-lg border border-black/15 text-[#102018] md:hidden dark:border-white/15 dark:text-[#F4F1E7]"
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-black/15 text-[#102018] md:hidden dark:border-white/15 dark:text-[#F4F1E7]"
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -325,6 +328,8 @@ type FooterProps = {
   onToggleTheme: () => void;
   onNavigate: (path: string) => void;
   onOpenAdvisorDrawer: () => void;
+  onOpenVisitModal: () => void;
+  onOpenWhatsAppModal: () => void;
   cookieChoice: "pending" | "accepted" | "essential";
   onCookieChoice: (choice: "accepted" | "essential") => void;
 };
@@ -334,75 +339,187 @@ export function SiteFooter({
   onToggleTheme,
   onNavigate,
   onOpenAdvisorDrawer,
+  onOpenVisitModal,
+  onOpenWhatsAppModal,
   cookieChoice,
   onCookieChoice,
 }: FooterProps) {
+  const [hoveredEstateSlug, setHoveredEstateSlug] = useState<string>(PROJECTS[0].slug);
+  const previewEstate =
+    PROJECTS.find((p) => p.slug === hoveredEstateSlug) ?? PROJECTS[0];
+  const previewStats = summarizeLayout(previewEstate.layout);
+
+  const goHomeSection = (sectionId: string) => {
+    if (window.location.pathname !== "/") {
+      onNavigate("/");
+      setTimeout(() => {
+        scrollToSmooth(`#${sectionId}`);
+      }, 180);
+    } else {
+      scrollToSmooth(`#${sectionId}`);
+    }
+  };
+
   return (
-    <footer className="border-t border-black/10 bg-[#ECEAE1] pb-20 text-[#17231C] md:pb-0 dark:border-[#D4AF5F]/15 dark:bg-[#060A08] dark:text-[#E5E2D7]">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-10 lg:py-14">
-        <div className="grid grid-cols-1 gap-10 border-b border-black/10 pb-10 md:grid-cols-12 dark:border-white/10">
-          <div className="md:col-span-5">
-            <div className="flex items-center gap-3.5">
-              <div className="overflow-hidden rounded-xl bg-[#080C0A] p-1.5 ring-1 ring-[#D4AF5F]/30 dark:bg-transparent dark:p-0 dark:ring-0">
+    <footer className="border-t border-black/[0.08] bg-[#ECEAE1] pb-20 text-[#17231C] md:pb-0 dark:border-white/[0.08] dark:bg-[#060A08] dark:text-[#E5E2D7]">
+      {/* Apple HIG Interactive Top Utility & Quick-Booking Strip */}
+      <div className="border-b border-black/[0.08] bg-[#F4F2EA]/80 dark:border-white/[0.08] dark:bg-[#0B120F]/90">
+        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-4 py-6 sm:flex-row sm:items-center sm:px-6 lg:px-10">
+          <div>
+            <p className="text-xs font-medium text-[#8C6D2E] dark:text-[#D4AF5F]">
+              Realtor Estates · Nagpur Advisory Desk
+            </p>
+            <p className="mt-0.5 text-base font-semibold tracking-tight text-[#102018] sm:text-lg dark:text-white">
+              Ready to inspect your shortlisted Nagpur plot in person?
+            </p>
+          </div>
+          <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
+            <button
+              type="button"
+              onClick={onOpenVisitModal}
+              className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[#10281E] px-4 py-2 text-xs font-semibold text-[#F6F5F0] transition-colors hover:bg-[#193b2d] sm:flex-none dark:bg-[#D4AF5F] dark:text-[#080C0A] dark:hover:bg-[#e5c77b]"
+            >
+              <CalendarCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>Book Free Site Visit</span>
+            </button>
+            <button
+              type="button"
+              onClick={onOpenWhatsAppModal}
+              className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-[#25D366]/45 bg-white px-4 py-2 text-xs font-semibold text-[#166534] transition-colors hover:border-[#25D366] sm:flex-none dark:bg-[#0c2417] dark:text-[#7CF0A6]"
+            >
+              <WhatsAppIcon className="h-3.5 w-3.5 shrink-0 text-[#25D366]" />
+              <span>WhatsApp Desk</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSmooth(0)}
+              aria-label="Scroll back to top"
+              className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl border border-black/10 bg-white text-[#102018] transition-all hover:-translate-y-0.5 hover:border-[#8C6D2E] dark:border-white/12 dark:bg-[#101814] dark:text-[#E5C77B] dark:hover:border-[#D4AF5F]"
+            >
+              <ArrowUp className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Apple-Structured Directory */}
+      <div className="mx-auto max-w-7xl px-4 pt-12 pb-8 sm:px-6 lg:px-10 lg:pt-14">
+        <div className="grid grid-cols-1 gap-10 border-b border-black/[0.08] pb-10 md:grid-cols-12 dark:border-white/[0.08]">
+          {/* Brand Identity */}
+          <div className="md:col-span-4">
+            <a
+              href="/"
+              onClick={(e) => {
+                e.preventDefault();
+                onNavigate("/");
+              }}
+              className="inline-flex items-center gap-3.5 text-left"
+            >
+              <div className="overflow-hidden rounded-2xl bg-[#080C0A] p-1.5 ring-1 ring-[#D4AF5F]/30 dark:bg-transparent dark:p-0 dark:ring-0">
                 <img
                   src={BRAND_LOGO_SRC}
                   alt="Realtor Estates — Property in Nagpur official emblem"
-                  width={76}
-                  height={76}
+                  width={68}
+                  height={68}
                   loading="lazy"
                   decoding="async"
-                  className="h-[76px] w-[76px] object-contain dark:mix-blend-screen"
+                  className="h-[68px] w-[68px] object-contain dark:mix-blend-screen"
                 />
               </div>
               <div>
-                <p className="font-display text-3xl leading-[0.95] font-semibold tracking-tight text-[#102018] dark:text-[#F4F1E7]">
+                <p className="font-display text-2xl leading-[0.95] font-semibold tracking-tight text-[#102018] sm:text-3xl dark:text-[#F4F1E7]">
                   Realtor Estates
                 </p>
-                <p className="mt-0.5 text-[9.5px] leading-none font-semibold tracking-[0.2em] text-[#7E632B] uppercase dark:text-[#D4AF5F]">
+                <p className="mt-1 text-[9.5px] leading-none font-semibold tracking-[0.2em] text-[#7E632B] uppercase dark:text-[#D4AF5F]">
                   Property in Nagpur
                 </p>
-                <p className="mt-2 text-xs font-medium text-[#46554C] dark:text-[#B8C4BB]">
-                  Buy Your Estates, Build Your Legacy · Living Legacy Lifestyle
-                </p>
               </div>
-            </div>
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-[#4F5D54] dark:text-[#9AA99E]">
-              NMRDA-sanctioned residential &amp; commercial plots in Nagpur across Salai Dabha,
-              Kanholi, Hingna, MIHAN, and Wardha Road — presented with interactive 3D layouts,
-              360° parcel inspection, and transparent due-diligence checklists.
+            </a>
+            <p className="mt-4 max-w-sm text-xs leading-relaxed text-[#4F5D54] dark:text-[#98A89D]">
+              NMRDA-sanctioned residential &amp; commercial plots in Nagpur presented with
+              interactive 3D layouts, 360° parcel inspection, and transparent 7/12 due-diligence.
             </p>
           </div>
 
-          {/* Minimalist Property List — Property Names Only (No Kh.No.) */}
-          <div className="md:col-span-3">
-            <p className="text-xs font-semibold text-[#102018] dark:text-[#F4F1E7]">
+          {/* Interactive Nagpur Estates Directory — Property Names Only (No Kh.No.) */}
+          <div className="md:col-span-4">
+            <p className="text-[11px] font-semibold tracking-wide text-[#6A7970] uppercase dark:text-[#84958A]">
               Nagpur Estates
             </p>
-            <ul className="mt-3 space-y-2 text-sm text-[#4F5D54] dark:text-[#9AA99E]">
-              {PROJECTS.map((project) => (
-                <li key={project.slug}>
-                  <a
-                    href={`/projects/${project.slug}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onNavigate(`/projects/${project.slug}`);
-                    }}
-                    className="inline-flex items-center gap-1.5 py-0.5 transition-colors hover:text-[#102018] hover:underline dark:hover:text-[#E5C77B]"
-                  >
-                    <MapPin className="h-3.5 w-3.5 shrink-0 text-[#8C6D2E] dark:text-[#D4AF5F]" aria-hidden="true" />
-                    <span>{project.name}</span>
-                  </a>
-                </li>
-              ))}
+            <ul className="mt-3 space-y-1.5">
+              {PROJECTS.map((project) => {
+                const isPreviewed = hoveredEstateSlug === project.slug;
+                return (
+                  <li key={project.slug}>
+                    <a
+                      href={`/projects/${project.slug}`}
+                      onMouseEnter={() => setHoveredEstateSlug(project.slug)}
+                      onFocus={() => setHoveredEstateSlug(project.slug)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onNavigate(`/projects/${project.slug}`);
+                      }}
+                      className={`group flex items-center justify-between rounded-xl px-3 py-2 text-sm transition-all ${
+                        isPreviewed
+                          ? "bg-white text-[#102018] shadow-xs ring-1 ring-black/[0.06] dark:bg-[#111B16] dark:text-[#F4F1E7] dark:ring-white/10"
+                          : "text-[#46554C] hover:bg-white/60 hover:text-[#102018] dark:text-[#9AA99E] dark:hover:bg-[#101814]"
+                      }`}
+                    >
+                      <span className="inline-flex items-center gap-2 font-medium">
+                        <MapPin
+                          className="h-3.5 w-3.5 shrink-0 text-[#8C6D2E] dark:text-[#D4AF5F]"
+                          aria-hidden="true"
+                        />
+                        <span>{project.name}</span>
+                      </span>
+                      <ArrowUpRight
+                        className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${
+                          isPreviewed
+                            ? "translate-x-0.5 -translate-y-0.5 text-[#8C6D2E] dark:text-[#D4AF5F]"
+                            : "text-[#8A9890]"
+                        }`}
+                        aria-hidden="true"
+                      />
+                    </a>
+                  </li>
+                );
+              })}
             </ul>
+            {/* Quiet Interactive Live Snapshot Strip */}
+            <div className="mt-2.5 flex items-center justify-between rounded-xl border border-black/[0.07] bg-white/70 px-3 py-2 text-[11px] text-[#526158] dark:border-white/[0.08] dark:bg-[#0D1511] dark:text-[#98A89D]">
+              <span className="truncate font-medium">{previewEstate.corridor}</span>
+              <span className="font-mono-tabular ml-2 shrink-0 font-semibold text-[#2E6B42] dark:text-[#7FBB8C]">
+                {previewStats.available} Open
+              </span>
+            </div>
           </div>
 
-          {/* Legal & Policies Links (Privacy Policy & Terms and Conditions) */}
+          {/* Quick Jump & Legal Column */}
           <div className="md:col-span-2">
-            <p className="text-xs font-semibold text-[#102018] dark:text-[#F4F1E7]">
-              Legal &amp; Policies
+            <p className="text-[11px] font-semibold tracking-wide text-[#6A7970] uppercase dark:text-[#84958A]">
+              Explore &amp; Legal
             </p>
-            <ul className="mt-3 space-y-2 text-sm text-[#4F5D54] dark:text-[#9AA99E]">
+            <ul className="mt-3 space-y-2 text-xs font-medium text-[#46554C] dark:text-[#9AA99E]">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => goHomeSection("nagpur-satellite-map")}
+                  className="inline-flex items-center gap-1.5 py-0.5 transition-colors hover:text-[#102018] dark:hover:text-[#E5C77B]"
+                >
+                  <Compass className="h-3.5 w-3.5 text-[#8C6D2E] dark:text-[#D4AF5F]" aria-hidden="true" />
+                  <span>3D Satellite Map</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => goHomeSection("estimator")}
+                  className="inline-flex items-center gap-1.5 py-0.5 transition-colors hover:text-[#102018] dark:hover:text-[#E5C77B]"
+                >
+                  <Calculator className="h-3.5 w-3.5 text-[#8C6D2E] dark:text-[#D4AF5F]" aria-hidden="true" />
+                  <span>EMI Calculator</span>
+                </button>
+              </li>
               <li>
                 <a
                   href="/privacy-policy"
@@ -412,7 +529,7 @@ export function SiteFooter({
                   }}
                   className="inline-flex items-center gap-1.5 py-0.5 transition-colors hover:text-[#102018] hover:underline dark:hover:text-[#E5C77B]"
                 >
-                  <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[#8C6D2E] dark:text-[#D4AF5F]" aria-hidden="true" />
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#8C6D2E] dark:text-[#D4AF5F]" aria-hidden="true" />
                   <span>Privacy Policy</span>
                 </a>
               </li>
@@ -425,40 +542,69 @@ export function SiteFooter({
                   }}
                   className="inline-flex items-center gap-1.5 py-0.5 transition-colors hover:text-[#102018] hover:underline dark:hover:text-[#E5C77B]"
                 >
-                  <FileText className="h-3.5 w-3.5 shrink-0 text-[#8C6D2E] dark:text-[#D4AF5F]" aria-hidden="true" />
+                  <FileText className="h-3.5 w-3.5 text-[#8C6D2E] dark:text-[#D4AF5F]" aria-hidden="true" />
                   <span>Terms &amp; Conditions</span>
                 </a>
               </li>
             </ul>
           </div>
 
-          <div className="flex flex-col items-start justify-between gap-4 md:col-span-2 md:items-end">
-            <div className="flex flex-wrap items-center gap-2 md:justify-end">
+          {/* Apple macOS/iOS Style Appearance & Advisor Workspace Column */}
+          <div className="flex flex-col gap-3 md:col-span-2 md:items-end">
+            <p className="text-[11px] font-semibold tracking-wide text-[#6A7970] uppercase dark:text-[#84958A]">
+              Appearance
+            </p>
+            {/* Segmented Light / Dark Control */}
+            <div
+              role="group"
+              aria-label="Theme appearance"
+              className="inline-flex rounded-xl border border-black/10 bg-white p-1 dark:border-white/12 dark:bg-[#101814]"
+            >
               <button
                 type="button"
-                onClick={onToggleTheme}
-                className="inline-flex min-h-[40px] items-center gap-2 whitespace-nowrap rounded-lg border border-black/15 bg-white px-3.5 py-2 text-xs font-medium text-[#15241C] transition-colors hover:border-[#8C6D2E] dark:border-white/15 dark:bg-[#101814] dark:text-[#EFECE2] dark:hover:border-[#D4AF5F]"
+                onClick={() => {
+                  if (isDark) onToggleTheme();
+                }}
+                aria-pressed={!isDark}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all ${
+                  !isDark
+                    ? "bg-[#10281E] text-[#F6F5F0] shadow-xs"
+                    : "text-[#8E9F93] hover:text-white"
+                }`}
               >
-                {isDark ? <Sun className="h-3.5 w-3.5 text-[#D4AF5F]" /> : <Moon className="h-3.5 w-3.5" />}
-                <span>{isDark ? "Light Mode" : "Dark Mode"}</span>
+                <Sun className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Light</span>
               </button>
               <button
                 type="button"
-                onClick={onOpenAdvisorDrawer}
-                className="min-h-[40px] whitespace-nowrap rounded-lg border border-black/15 px-3.5 py-2 text-xs font-medium text-[#46544C] transition-colors hover:border-[#8C6D2E] hover:text-[#102018] dark:border-white/15 dark:text-[#A8B7AC] dark:hover:border-[#D4AF5F] dark:hover:text-[#E5C77B]"
+                onClick={() => {
+                  if (!isDark) onToggleTheme();
+                }}
+                aria-pressed={isDark}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all ${
+                  isDark
+                    ? "bg-[#D4AF5F] text-[#080C0A] shadow-xs"
+                    : "text-[#526158] hover:text-[#102018]"
+                }`}
               >
-                Advisor CRM
+                <Moon className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Dark</span>
               </button>
             </div>
-            <p className="text-xs text-[#647269] md:text-right dark:text-[#7E8E83]">
-              Nagpur, Maharashtra, India
-              <br />© {new Date().getFullYear()} Realtor Estates. All rights reserved.
-            </p>
+
+            <button
+              type="button"
+              onClick={onOpenAdvisorDrawer}
+              className="inline-flex min-h-[38px] items-center gap-1.5 whitespace-nowrap rounded-xl border border-black/10 bg-white/80 px-3.5 py-1.5 text-xs font-medium text-[#46544C] transition-colors hover:border-[#8C6D2E] hover:text-[#102018] dark:border-white/12 dark:bg-[#101814] dark:text-[#A8B7AC] dark:hover:border-[#D4AF5F] dark:hover:text-[#E5C77B]"
+            >
+              <span>Advisor CRM</span>
+              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
           </div>
         </div>
 
         {/* RERA, Pricing & Due-Diligence Compliance Disclaimer */}
-        <div className="pt-7 text-[11px] leading-relaxed text-[#5C6A61] dark:text-[#86968B]">
+        <div className="pt-6 text-[11px] leading-relaxed text-[#5C6A61] dark:text-[#86968B]">
           <p>
             <strong className="font-semibold text-[#17231C] dark:text-[#C9D3CB]">
               Compliance, Pricing &amp; Due-Diligence Disclaimer:
@@ -475,8 +621,8 @@ export function SiteFooter({
           </p>
         </div>
 
-        {/* GDPR Cookie Consent One-Liner + Direct Legal Page Links */}
-        <div className="mt-5 flex flex-col items-start justify-between gap-3 border-t border-black/10 pt-4 text-xs text-[#54635A] sm:flex-row sm:items-center dark:border-white/10 dark:text-[#8F9F94]">
+        {/* GDPR Cookie Consent Notice */}
+        <div className="mt-5 flex flex-col items-start justify-between gap-3 border-t border-black/[0.08] pt-4 text-xs text-[#54635A] sm:flex-row sm:items-center dark:border-white/[0.08] dark:text-[#8F9F94]">
           <p className="leading-snug">
             GDPR &amp; Privacy Notice: We use essential cookies and anonymized telemetry solely for
             theme and enquiry preferences — never sold to third parties. Read our{" "}
@@ -509,24 +655,36 @@ export function SiteFooter({
                 <button
                   type="button"
                   onClick={() => onCookieChoice("essential")}
-                  className="min-h-[36px] whitespace-nowrap rounded-md border border-black/15 px-3 py-1 text-[11px] font-medium hover:border-black/40 dark:border-white/15 dark:hover:border-white/40"
+                  className="min-h-[34px] whitespace-nowrap rounded-lg border border-black/15 px-3 py-1 text-[11px] font-medium hover:border-black/40 dark:border-white/15 dark:hover:border-white/40"
                 >
                   Essential Only
                 </button>
                 <button
                   type="button"
                   onClick={() => onCookieChoice("accepted")}
-                  className="min-h-[36px] whitespace-nowrap rounded-md bg-[#10281E] px-3 py-1 text-[11px] font-semibold text-[#F6F5F0] dark:bg-[#D4AF5F] dark:text-[#080C0A]"
+                  className="min-h-[34px] whitespace-nowrap rounded-lg bg-[#10281E] px-3 py-1 text-[11px] font-semibold text-[#F6F5F0] dark:bg-[#D4AF5F] dark:text-[#080C0A]"
                 >
                   Accept Preferences
                 </button>
               </>
             ) : (
-              <span className="whitespace-nowrap text-[11px] text-[#7E632B] dark:text-[#D4AF5F]">
+              <span className="whitespace-nowrap text-[11px] font-medium text-[#7E632B] dark:text-[#D4AF5F]">
                 Cookie preference saved ({cookieChoice === "accepted" ? "Full" : "Essential only"})
               </span>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Extreme Bottom Highlighted Copyright Bar — Placed AFTER All Disclaimers */}
+      <div className="border-t border-black/10 bg-[#E3DFD3] dark:border-[#D4AF5F]/20 dark:bg-[#0B120F]">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-center sm:flex-row sm:px-6 sm:text-left lg:px-10">
+          <p className="text-xs font-semibold tracking-tight text-[#102018] dark:text-[#F4F1E7]">
+            © 2026 Realtor Estates. All rights reserved.
+          </p>
+          <p className="text-[11px] font-medium text-[#526158] dark:text-[#9AA99E]">
+            Nagpur, Maharashtra, India · Buy Your Estates, Build Your Legacy
+          </p>
         </div>
       </div>
     </footer>

@@ -478,14 +478,298 @@ async function startServer() {
     });
   });
 
+  type RouteSeoMeta = {
+    title: string;
+    description: string;
+    robots: string;
+    canonicalPath: string;
+    ogImagePath: string;
+    jsonLd?: Record<string, unknown>;
+  };
+
+  const PROJECT_SEO_MAP: Record<
+    string,
+    {
+      name: string;
+      khNo: string;
+      corridor: string;
+      location: string;
+      resRate: number;
+      comRate?: number;
+      heroImage: string;
+      sanctionRef: string;
+      frontage: string;
+      faqQ: string;
+      faqA: string;
+    }
+  > = {
+    "samruddhi-estate-phase-3": {
+      name: "Samruddhi Estate Phase 3",
+      khNo: "Kh. No. 110",
+      corridor: "Salai Dabha · Hingna – MIHAN Belt",
+      location: "Mouza Salaidabha, Tah. Hingna, Dist. Nagpur",
+      resRate: 1700,
+      comRate: 1750,
+      heroImage: "/src/assets/images/hero_nagpur_estate_1795287010697.jpg",
+      sanctionRef: "NMRDA Sanctioned Agreement Dt. 02/07/2026 · Kh. No. 110",
+      frontage: "12.00 m Wide Spine Road & 9.00 m Internal Avenues",
+      faqQ: "What are the Residential and Commercial plot rates at Samruddhi Estate Phase 3?",
+      faqA: "Samruddhi Estate Phase 3 in Salai Dabha (Kh. No. 110) starts at ₹1,700/sq.ft* for Residential plots and ₹1,750/sq.ft* for Commercial spine-road plots, subject to written cost sheet confirmation.",
+    },
+    "samruddhi-estate-phase-4": {
+      name: "Samruddhi Estate Phase 4",
+      khNo: "Kh. No. 111",
+      corridor: "Salai Dabha · 18 m D.P. Road Frontage",
+      location: "Mouza Salaidabha, Tah. Hingna, Dist. Nagpur",
+      resRate: 1700,
+      comRate: 1750,
+      heroImage: "/src/assets/images/project_sajal_wardha_1795287010087.jpg",
+      sanctionRef: "NMRDA Proposed Residential Layout Plan · Kh. No. 111",
+      frontage: "18.00 m Wide D.P. Road & 9.00 m Internal Avenues",
+      faqQ: "What is the starting price and road frontage at Samruddhi Estate Phase 4?",
+      faqA: "Samruddhi Estate Phase 4 in Salai Dabha (Kh. No. 111) sits on an 18.00 m Wide D.P. Road with Residential plots starting at ₹1,700/sq.ft* and Commercial plots starting at ₹1,750/sq.ft*.",
+    },
+    "bhagirath-nagari": {
+      name: "Bhagirathi Nagar - 4",
+      khNo: "Sr. No. 87/1",
+      corridor: "Mouza Kanholi · Hingna – Nagpur",
+      location: "Sr. No. 87/1, P.H. No. 48, Mouza Kanholi, Tah. Hingna, Nagpur",
+      resRate: 1990,
+      comRate: 2050,
+      heroImage: "/src/assets/images/project_samruddhi_butibori_1795287027780.jpg",
+      sanctionRef: "NMRDA Digitally Signed File Ref: NMRDA-26-36337",
+      frontage: "12.00 m Wide Spine Roads & 9.00 m Internal Grid",
+      faqQ: "What are the plot rates and NMRDA reference for Bhagirathi Nagar - 4 in Nagpur?",
+      faqA: "Bhagirathi Nagar - 4 in Mouza Kanholi (NMRDA-26-36337, 15.69 acres, 253 plots) starts at ₹1,990/sq.ft* for Residential plots and ₹2,050/sq.ft* for 12 m road Commercial plots.",
+    },
+    "ananta-akasha": {
+      name: "Ananta & Akasha",
+      khNo: "Kh. No. 64 & 64/2",
+      corridor: "Hingna · 30 m Boulevard Frontage",
+      location: "Kh. No. 64 & 64/2, Adj. Sanctioned NATP Kh. No. 66/2, Nagpur",
+      resRate: 2650,
+      heroImage: "/src/assets/images/project_ananta_hingna_1795287009980.jpg",
+      sanctionRef: "Adj. Sanctioned NATP Kh. No. 66/2 · 30 m Boulevard",
+      frontage: "30.00 m Wide South Road & 18.00 m Central Boulevard",
+      faqQ: "How many plots remain open at Ananta & Akasha on Hingna 30m Boulevard?",
+      faqA: "Ananta Wing (28 plots) is fully allotted; 7 un-circled marquee plots in Akasha Wing (Plots 1, 4, 5, 17, 22, 23 & 26) remain open for enquiry starting at ₹2,650/sq.ft*.",
+    },
+  };
+
+  function escapeHtmlAttr(val: string): string {
+    return val
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function resolveRouteSeo(reqPath: string, baseUrl: string): RouteSeoMeta {
+    const clean = reqPath.replace(/\/$/, "") || "/";
+    const thankYouMatch = clean.match(/^\/projects\/([^/]+)\/thank-you$/);
+    const projectMatch = clean.match(/^\/projects\/([^/]+)$/);
+
+    if (clean === "/privacy-policy") {
+      return {
+        title: "Privacy Policy — Realtor Estates | Property in Nagpur",
+        description:
+          "Read Realtor Estates' Privacy Policy covering GDPR & India DPDP Act 2023 compliance, cookie controls, Google Maps notice, and zero data resale for Nagpur plot enquiries.",
+        robots: "index, follow",
+        canonicalPath: "/privacy-policy",
+        ogImagePath: "/src/assets/images/hero_nagpur_estate_1795287010697.jpg",
+      };
+    }
+
+    if (clean === "/terms-and-conditions") {
+      return {
+        title: "Terms & Conditions — Realtor Estates | Property in Nagpur",
+        description:
+          "Terms & Conditions, Pricing & Loan Calculator Disclaimers, and NMRDA/MahaRERA due-diligence guidelines for Realtor Estates — Property in Nagpur.",
+        robots: "index, follow",
+        canonicalPath: "/terms-and-conditions",
+        ogImagePath: "/src/assets/images/hero_nagpur_estate_1795287010697.jpg",
+      };
+    }
+
+    if (thankYouMatch) {
+      const proj = PROJECT_SEO_MAP[thankYouMatch[1]] ?? PROJECT_SEO_MAP["samruddhi-estate-phase-3"];
+      return {
+        title: `Confirmed — ${proj.name} | Realtor Estates`,
+        description: `Your ${proj.name} enquiry is registered with Realtor Estates — Property in Nagpur.`,
+        robots: "noindex, nofollow",
+        canonicalPath: clean,
+        ogImagePath: proj.heroImage,
+      };
+    }
+
+    if (projectMatch && PROJECT_SEO_MAP[projectMatch[1]]) {
+      const slug = projectMatch[1];
+      const proj = PROJECT_SEO_MAP[slug];
+      const priceText = proj.comRate
+        ? `Res. ₹${proj.resRate.toLocaleString("en-IN")} / Com. ₹${proj.comRate.toLocaleString("en-IN")} sq.ft*`
+        : `From ₹${proj.resRate.toLocaleString("en-IN")}/sq.ft*`;
+      const pageUrl = `${baseUrl}/projects/${slug}`;
+
+      return {
+        title: `${proj.name} (${proj.khNo}) — 3D Plots & Satellite Map | Realtor Estates`,
+        description: `Explore ${proj.name} in ${proj.location}. ${priceText}. ${proj.frontage}. Inspect every plot in 360° 3D, view live Google Maps satellite landmarks & calculate EMI.`,
+        robots: "index, follow, max-image-preview:large, max-snippet:-1",
+        canonicalPath: `/projects/${slug}`,
+        ogImagePath: proj.heroImage,
+        jsonLd: {
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                { "@type": "ListItem", position: 1, name: "Realtor Estates — Property in Nagpur", item: `${baseUrl}/` },
+                { "@type": "ListItem", position: 2, name: proj.name, item: pageUrl },
+              ],
+            },
+            {
+              "@type": "RealEstateListing",
+              name: `${proj.name} — ${proj.corridor}`,
+              description: `${proj.sanctionRef}. ${proj.frontage}. ${priceText}`,
+              url: pageUrl,
+              image: `${baseUrl}${proj.heroImage}`,
+              offers: proj.comRate
+                ? [
+                    {
+                      "@type": "Offer",
+                      name: `${proj.name} Residential Plot`,
+                      price: String(proj.resRate),
+                      priceCurrency: "INR",
+                      unitText: "sq.ft",
+                      availability: "https://schema.org/InStock",
+                    },
+                    {
+                      "@type": "Offer",
+                      name: `${proj.name} Commercial Plot`,
+                      price: String(proj.comRate),
+                      priceCurrency: "INR",
+                      unitText: "sq.ft",
+                      availability: "https://schema.org/InStock",
+                    },
+                  ]
+                : {
+                    "@type": "Offer",
+                    name: `${proj.name} Estate Plot`,
+                    price: String(proj.resRate),
+                    priceCurrency: "INR",
+                    unitText: "sq.ft",
+                    availability: "https://schema.org/InStock",
+                  },
+            },
+            {
+              "@type": "FAQPage",
+              mainEntity: [
+                {
+                  "@type": "Question",
+                  name: proj.faqQ,
+                  acceptedAnswer: { "@type": "Answer", text: proj.faqA },
+                },
+              ],
+            },
+          ],
+        },
+      };
+    }
+
+    return {
+      title: "Realtor Estates — Property in Nagpur | NMRDA Plots",
+      description:
+        "Buy Your Estates, Build Your Legacy in Nagpur. Inspect NMRDA plots in 3D, 360° & Google Maps Satellite across Salai Dabha, Kanholi & Hingna — starting ₹1,700/sq.ft*.",
+      robots: "index, follow, max-image-preview:large, max-snippet:-1",
+      canonicalPath: "/",
+      ogImagePath: "/src/assets/images/hero_nagpur_estate_1795287010697.jpg",
+    };
+  }
+
+  function injectRouteSeoHtml(templateHtml: string, req: express.Request): string {
+    const baseUrl =
+      process.env.APP_URL?.trim().replace(/\/$/, "") ||
+      `${req.protocol}://${req.get("host")}`;
+    const seo = resolveRouteSeo(req.path, baseUrl);
+    const canonicalUrl = `${baseUrl}${seo.canonicalPath}`;
+    const ogImageUrl = `${baseUrl}${seo.ogImagePath}`;
+
+    let html = templateHtml
+      .replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtmlAttr(seo.title)}</title>`)
+      .replace(
+        /<meta\s+name="description"[\s\S]*?\/>/i,
+        `<meta name="description" content="${escapeHtmlAttr(seo.description)}" />`,
+      )
+      .replace(
+        /<meta\s+name="robots"[\s\S]*?\/>/i,
+        `<meta name="robots" content="${escapeHtmlAttr(seo.robots)}" />`,
+      )
+      .replace(
+        /<meta\s+property="og:title"[\s\S]*?\/>/i,
+        `<meta property="og:title" content="${escapeHtmlAttr(seo.title)}" />`,
+      )
+      .replace(
+        /<meta\s+property="og:description"[\s\S]*?\/>/i,
+        `<meta property="og:description" content="${escapeHtmlAttr(seo.description)}" />`,
+      )
+      .replace(
+        /<meta\s+property="og:image"[\s\S]*?\/>/i,
+        `<meta property="og:image" content="${escapeHtmlAttr(ogImageUrl)}" />`,
+      )
+      .replace(
+        /<meta\s+name="twitter:title"[\s\S]*?\/>/i,
+        `<meta name="twitter:title" content="${escapeHtmlAttr(seo.title)}" />`,
+      )
+      .replace(
+        /<meta\s+name="twitter:description"[\s\S]*?\/>/i,
+        `<meta name="twitter:description" content="${escapeHtmlAttr(seo.description)}" />`,
+      )
+      .replace(
+        /<meta\s+name="twitter:image"[\s\S]*?\/>/i,
+        `<meta name="twitter:image" content="${escapeHtmlAttr(ogImageUrl)}" />`,
+      );
+
+    const extraHeadTags = [
+      `<link rel="canonical" href="${escapeHtmlAttr(canonicalUrl)}" />`,
+      `<meta property="og:url" content="${escapeHtmlAttr(canonicalUrl)}" />`,
+      seo.jsonLd
+        ? `<script type="application/ld+json">${JSON.stringify(seo.jsonLd).replace(/</g, "\\u003c")}</script>`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n    ");
+
+    html = html.replace("</head>", `    ${extraHeadTags}\n  </head>`);
+    return html;
+  }
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: "spa",
+      appType: "custom",
     });
     app.use(vite.middlewares);
+
+    app.get("*", async (req, res, next) => {
+      // Skip non-HTML asset/API paths
+      if (req.path.startsWith("/api/") || /\.[a-zA-Z0-9]{2,8}$/.test(req.path)) {
+        next();
+        return;
+      }
+      try {
+        const indexPath = path.resolve(process.cwd(), "index.html");
+        const rawTemplate = fs.readFileSync(indexPath, "utf8");
+        const transformed = await vite.transformIndexHtml(req.originalUrl, rawTemplate);
+        const finalHtml = injectRouteSeoHtml(transformed, req);
+        res.status(200).set({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" }).end(finalHtml);
+      } catch (err) {
+        vite.ssrFixStacktrace(err as Error);
+        next(err);
+      }
+    });
   } else {
     const distDir = path.resolve(process.cwd(), "dist");
+    const distIndexHtml = fs.readFileSync(path.resolve(distDir, "index.html"), "utf8");
+
     app.use(
       "/assets",
       express.static(path.resolve(distDir, "assets"), {
@@ -495,6 +779,7 @@ async function startServer() {
     );
     app.use(
       express.static(distDir, {
+        index: false,
         maxAge: "1d",
         setHeaders: (res, filePath) => {
           if (filePath.endsWith(".html")) {
@@ -503,9 +788,9 @@ async function startServer() {
         },
       }),
     );
-    app.get("*", (_req, res) => {
-      res.setHeader("Cache-Control", "no-cache");
-      res.sendFile(path.resolve(distDir, "index.html"));
+    app.get("*", (req, res) => {
+      const finalHtml = injectRouteSeoHtml(distIndexHtml, req);
+      res.status(200).set({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" }).send(finalHtml);
     });
   }
 
@@ -515,3 +800,4 @@ async function startServer() {
 }
 
 startServer();
+

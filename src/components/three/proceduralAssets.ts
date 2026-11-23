@@ -265,6 +265,113 @@ export function createLabelSprite(
 }
 
 /**
+ * Crisp road-surface architectural measurement plaque that lies flat above the asphalt
+ * and aligns strictly along the road axis (horizontal, vertical, or angled) so full
+ * measurements ("9.00 M WIDE ROAD", "12.00 M WIDE ROAD", "18.00 M WIDE D.P. ROAD")
+ * are never buried underground, clipped, or overlapping neighboring plots.
+ */
+export function createRoadLabelMesh(
+  renderer: THREE.WebGLRenderer,
+  text: string,
+  roadW: number,
+  roadD: number,
+  orient: "h" | "v",
+  options?: {
+    rotDeg?: number;
+    isWideArterial?: boolean;
+  },
+): THREE.Mesh {
+  const isWide = options?.isWideArterial ?? false;
+  const fontSize = 68;
+  const fontSpec = `800 ${fontSize}px "Plus Jakarta Sans", Arial, sans-serif`;
+
+  const measureCanvas = document.createElement("canvas");
+  const mCtx = measureCanvas.getContext("2d");
+  let measuredW = text.length * fontSize * 0.64;
+  if (mCtx) {
+    mCtx.font = fontSpec;
+    measuredW = mCtx.measureText(text).width;
+  }
+
+  const padX = 72;
+  const canvasW = Math.max(420, Math.ceil(measuredW + padX * 2));
+  const canvasH = 152;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.clearRect(0, 0, canvasW, canvasH);
+
+    // High-contrast obsidian plaque with crisp brushed-gold rim
+    ctx.fillStyle = isWide ? "rgba(7, 17, 12, 0.96)" : "rgba(8, 17, 13, 0.94)";
+    ctx.beginPath();
+    ctx.roundRect(10, 10, canvasW - 20, canvasH - 20, 26);
+    ctx.fill();
+
+    ctx.strokeStyle = isWide ? "#F7DA84" : "#D4AF5F";
+    ctx.lineWidth = isWide ? 7 : 5.5;
+    ctx.stroke();
+
+    ctx.font = fontSpec;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 7;
+    ctx.strokeStyle = "rgba(3, 8, 6, 0.95)";
+    ctx.strokeText(text, canvasW / 2, canvasH / 2 + 2);
+    ctx.fillStyle = isWide ? "#FFF5D6" : "#F8F3E6";
+    ctx.fillText(text, canvasW / 2, canvasH / 2 + 2);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.needsUpdate = true;
+
+  const aspect = canvasW / canvasH;
+  const alongSpan = orient === "h" ? roadW : roadD;
+  const crossSpan = orient === "h" ? roadD : roadW;
+
+  // Size generously for readability while strictly respecting both road width and road length
+  const maxPlaneHeight = Math.min(crossSpan * 0.86, isWide ? 10.2 : 7.4);
+  let planeHeight = maxPlaneHeight;
+  let planeWidth = planeHeight * aspect;
+
+  const maxPlaneWidth = Math.max(alongSpan * 0.84, 18);
+  if (planeWidth > maxPlaneWidth) {
+    planeWidth = maxPlaneWidth;
+    planeHeight = planeWidth / aspect;
+  }
+
+  const geo = new THREE.PlaneGeometry(planeWidth, planeHeight);
+  geo.rotateX(-Math.PI / 2);
+
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex,
+    transparent: true,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+    toneMapped: false,
+  });
+
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.renderOrder = 14;
+
+  // Align strictly with road orientation (+ any blueprint angle rotDeg)
+  const baseRot = orient === "v" ? Math.PI / 2 : 0;
+  const extraRot = options?.rotDeg ? -THREE.MathUtils.degToRad(options.rotDeg) : 0;
+  mesh.rotation.y = baseRot + extraRot;
+
+  return mesh;
+}
+
+/**
  * Composite 5-part procedural botanical tree (flared root, tapered trunk, 3 asymmetric canopy tiers).
  * Pivoted at bottom-center (y = 0) flush with the ground.
  */

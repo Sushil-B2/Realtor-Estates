@@ -1,7 +1,9 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { FileCheck2, X } from "lucide-react";
 import { getProjectBySlug, PROJECTS } from "./data/projects";
 import { setAnalyticsConsent, trackEvent } from "./lib/analytics";
+import { resetScrollTopInstant, scrollToSmooth, useSmoothScroll } from "./hooks/useSmoothScroll";
 import { SiteFooter, SiteHeader } from "./components/SiteChrome";
 import type { LeadSubmissionResult } from "./components/LeadCaptureModal";
 import HomePage from "./pages/HomePage";
@@ -9,6 +11,7 @@ import HomePage from "./pages/HomePage";
 const ProjectLandingPage = lazy(() => import("./pages/ProjectLandingPage"));
 const ThankYouPage = lazy(() => import("./pages/ThankYouPage"));
 const LeadCaptureModal = lazy(() => import("./components/LeadCaptureModal"));
+const SiteVisitBookingModal = lazy(() => import("./components/SiteVisitBookingModal"));
 const CrmAnalyticsDrawer = lazy(() => import("./components/CrmAnalyticsDrawer"));
 const PrivacyPolicyPage = lazy(() =>
   import("./pages/LegalPages").then((m) => ({ default: m.PrivacyPolicyPage })),
@@ -66,6 +69,60 @@ export default function App() {
   const [advisorDrawerOpen, setAdvisorDrawerOpen] = useState(false);
   const [heatmapOverlay, setHeatmapOverlay] = useState(false);
   const [liveHeatmapPoints, setLiveHeatmapPoints] = useState<Array<{ xPct: number; yPct: number }>>([]);
+  const [gmpQuotaExceeded, setGmpQuotaExceeded] = useState(false);
+
+  // Behavior-triggered smart nudge (never an arrival popup; only after 2+ genuine plot/EMI interactions)
+  const [smartNudge, setSmartNudge] = useState<{
+    visible: boolean;
+    projectSlug: string;
+    plotNo?: string;
+    reason: "plots" | "emi";
+  }>({ visible: false, projectSlug: PROJECTS[0].slug, reason: "plots" });
+
+  // Butter-smooth desktop inertial scroll via Lenis (paused while modals/drawers are open)
+  useSmoothScroll(leadModal.open || advisorDrawerOpen);
+
+  // Listen for Google Maps Platform Demo Key quota exhaustion events
+  useEffect(() => {
+    const onQuota = () => setGmpQuotaExceeded(true);
+    window.addEventListener("gmp-quota-exceeded", onQuota);
+    return () => window.removeEventListener("gmp-quota-exceeded", onQuota);
+  }, []);
+
+  // Listen for high-intent buyer engagement (2+ 360° plot views or 2+ EMI adjustments)
+  useEffect(() => {
+    let plotInspectCount = 0;
+    let emiAdjustCount = 0;
+
+    const onEngagement = (ev: Event) => {
+      if (window.sessionStorage.getItem("realtor-nudge-dismissed") === "1") return;
+      const detail = (ev as CustomEvent<{ kind?: string; projectSlug?: string; plotNo?: string }>).detail;
+      if (!detail) return;
+      if (detail.kind === "plot_inspect") {
+        plotInspectCount++;
+        if (plotInspectCount >= 2) {
+          setSmartNudge({
+            visible: true,
+            projectSlug: detail.projectSlug || PROJECTS[0].slug,
+            plotNo: detail.plotNo,
+            reason: "plots",
+          });
+        }
+      } else if (detail.kind === "emi_adjust") {
+        emiAdjustCount++;
+        if (emiAdjustCount >= 2) {
+          setSmartNudge({
+            visible: true,
+            projectSlug: detail.projectSlug || PROJECTS[0].slug,
+            reason: "emi",
+          });
+        }
+      }
+    };
+
+    window.addEventListener("realtor-engagement", onEngagement);
+    return () => window.removeEventListener("realtor-engagement", onEngagement);
+  }, []);
 
   // Keep HTML dark class synchronized
   useEffect(() => {
@@ -84,7 +141,7 @@ export default function App() {
   useEffect(() => {
     const onPop = () => {
       setRoute(readRoute());
-      window.scrollTo({ top: 0, behavior: "instant" });
+      resetScrollTopInstant();
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -213,7 +270,7 @@ export default function App() {
       window.history.pushState({}, "", path);
     }
     setRoute(readRoute());
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollToSmooth(0, 0);
   }, []);
 
   const openLeadModal = useCallback(
@@ -281,7 +338,25 @@ export default function App() {
   }
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className="min-h-screen bg-[#F6F5F0] text-[#111915] transition-colors duration-200 dark:bg-[#080C0A] dark:text-[#F2EFE7]">
+      {gmpQuotaExceeded ? (
+        <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-2.5 text-xs md:text-sm text-center sticky top-0 z-50 shadow-sm">
+          <span>
+            Google Maps Platform quota reached. If you are the app owner, visit{" "}
+            <a
+              href="https://developers.google.com/maps/ai/ai-studio?utm_campaign=gmp_mcp_codeassist_v1_aistudio#quota_exceeded_errors"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-semibold text-amber-950 hover:text-amber-800"
+            >
+              maps developer site
+            </a>{" "}
+            for instructions to update your account.
+          </span>
+        </div>
+      ) : null}
+
       <SiteHeader
         currentPath={route.pathname}
         onNavigate={navigate}
@@ -320,27 +395,109 @@ export default function App() {
         onToggleTheme={() => setIsDark((d) => !d)}
         onNavigate={navigate}
         onOpenAdvisorDrawer={() => setAdvisorDrawerOpen(true)}
+        onOpenVisitModal={() =>
+          openLeadModal({
+            projectSlug: projectMatch ? projectMatch[1] : PROJECTS[0].slug,
+            interest: "site-visit",
+          })
+        }
+        onOpenWhatsAppModal={() =>
+          openLeadModal({
+            projectSlug: projectMatch ? projectMatch[1] : PROJECTS[0].slug,
+            interest: "callback",
+          })
+        }
         cookieChoice={cookieChoice}
         onCookieChoice={handleCookieChoice}
       />
 
       {leadModal.open ? (
         <Suspense fallback={null}>
-          <LeadCaptureModal
-            open={leadModal.open}
-            defaultProjectSlug={leadModal.projectSlug}
-            defaultPlotNumber={leadModal.plotNumber}
-            defaultBudgetInr={leadModal.budgetInr}
-            defaultLoanRequired={leadModal.loanRequired}
-            interest={leadModal.interest}
-            onClose={() => setLeadModal((m) => ({ ...m, open: false }))}
-            onSuccess={(result) => {
-              setLeadModal((m) => ({ ...m, open: false }));
-              setLastConfirmation(result);
-              navigate(`/projects/${result.projectSlug}/thank-you`);
-            }}
-          />
+          {leadModal.interest === "site-visit" ? (
+            <SiteVisitBookingModal
+              open={leadModal.open}
+              defaultProjectSlug={leadModal.projectSlug}
+              defaultPlotNumber={leadModal.plotNumber}
+              onClose={() => setLeadModal((m) => ({ ...m, open: false }))}
+              onSuccess={(result) => {
+                setLeadModal((m) => ({ ...m, open: false }));
+                setSmartNudge((s) => ({ ...s, visible: false }));
+                window.sessionStorage.setItem("realtor-nudge-dismissed", "1");
+                setLastConfirmation(result);
+                navigate(`/projects/${result.projectSlug}/thank-you`);
+              }}
+            />
+          ) : (
+            <LeadCaptureModal
+              open={leadModal.open}
+              defaultProjectSlug={leadModal.projectSlug}
+              defaultPlotNumber={leadModal.plotNumber}
+              defaultBudgetInr={leadModal.budgetInr}
+              defaultLoanRequired={leadModal.loanRequired}
+              interest={leadModal.interest}
+              onClose={() => setLeadModal((m) => ({ ...m, open: false }))}
+              onSuccess={(result) => {
+                setLeadModal((m) => ({ ...m, open: false }));
+                setSmartNudge((s) => ({ ...s, visible: false }));
+                window.sessionStorage.setItem("realtor-nudge-dismissed", "1");
+                setLastConfirmation(result);
+                navigate(`/projects/${result.projectSlug}/thank-you`);
+              }}
+            />
+          )}
         </Suspense>
+      ) : null}
+
+      {/* Behavior-Triggered Smart Nudge (Only after genuine 360° plot or EMI engagement; never an arrival popup) */}
+      {smartNudge.visible && !leadModal.open && !thankYouMatch ? (
+        <aside
+          aria-label="Written cost sheet offer"
+          className="fixed right-3 bottom-20 left-3 z-30 mx-auto max-w-md rounded-xl border border-[#D4AF5F]/45 bg-[#0C1712]/96 p-3.5 text-[#F5F2E9] shadow-xl sm:right-5 sm:bottom-5 sm:left-auto"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#D4AF5F]/15 text-[#E5C77B]">
+                <FileCheck2 className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div>
+                <p className="text-xs font-semibold text-[#F7F4EC]">
+                  {smartNudge.reason === "emi"
+                    ? "Want a dated Written Cost Sheet & Bank EMI Brief?"
+                    : "Shortlisting Nagpur plots? Get Written Confirmation."}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-snug text-[#B8C6BC]">
+                  Receive verified availability + our 14-Point Maharashtra Plot Buyer’s Guide in 5 seconds.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSmartNudge((s) => ({ ...s, visible: false }));
+                    window.sessionStorage.setItem("realtor-nudge-dismissed", "1");
+                    openLeadModal({
+                      projectSlug: smartNudge.projectSlug,
+                      plotNumber: smartNudge.plotNo,
+                      interest: "plot-enquiry",
+                    });
+                  }}
+                  className="mt-2 inline-flex min-h-[34px] items-center gap-1.5 rounded-lg bg-[#D4AF5F] px-3 py-1.5 text-[11px] font-semibold text-[#080C0A] hover:bg-[#e5c77b]"
+                >
+                  <span>Unlock Cost Sheet &amp; Buyer’s Guide</span>
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              aria-label="Dismiss offer"
+              onClick={() => {
+                setSmartNudge((s) => ({ ...s, visible: false }));
+                window.sessionStorage.setItem("realtor-nudge-dismissed", "1");
+              }}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#9EB0A3] hover:bg-white/10 hover:text-white"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </aside>
       ) : null}
 
       {advisorDrawerOpen ? (
@@ -370,5 +527,6 @@ export default function App() {
         </div>
       ) : null}
     </div>
+    </MotionConfig>
   );
 }

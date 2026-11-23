@@ -399,3 +399,152 @@ export function ProjectSanctionStamp({ project }: { project: EstateProject }) {
     </div>
   );
 }
+
+/**
+ * Prominent dual official-style emblem logo showcase for NMRDA Sanctioned & MahaRERA Approved,
+ * displayed in the FAQ / Buyer Trust section above the footer.
+ */
+export function NmrdaReraApprovalLogos() {
+  return (
+    <div
+      aria-label="NMRDA Sanctioned and MahaRERA Approved official compliance emblems"
+      className="grid grid-cols-2 gap-4"
+    >
+      {/* 1. NMRDA SANCTIONED LOGO */}
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-[#D4AF5F]/30 bg-[#0D1A14] px-4 py-6 text-center">
+        <svg
+          viewBox="0 0 120 120"
+          className="h-24 w-24 shrink-0 sm:h-28 sm:w-28"
+          role="img"
+          aria-label="NMRDA Sanctioned Logo"
+        >
+          {/* Outer double authority seal */}
+          <circle
+            cx="60"
+            cy="60"
+            r="55"
+            fill="#09130F"
+            stroke="#D4AF5F"
+            strokeWidth="2.4"
+          />
+          <circle
+            cx="60"
+            cy="60"
+            r="48"
+            fill="none"
+            stroke="#D4AF5F"
+            strokeOpacity="0.45"
+            strokeWidth="1.2"
+            strokeDasharray="3 2.5"
+          />
+          {/* Civic crest pillar & metropolitan arch */}
+          <path
+            d="M60 22l7 9H53l7-9z"
+            fill="#E5C77B"
+          />
+          <rect x="47" y="33" width="26" height="4.5" rx="1.5" fill="#D4AF5F" />
+          <path
+            d="M49 40h5v18h-5V40zm8.5 0h5v18h-5V40zm8.5 0h5v18h-5V40z"
+            fill="#F4E7C1"
+          />
+          <rect x="42" y="60" width="36" height="4.5" rx="1.5" fill="#D4AF5F" />
+          {/* Official Ribbon Banner */}
+          <rect x="18" y="70" width="84" height="19" rx="5" fill="#D4AF5F" />
+          <text
+            x="60"
+            y="82.5"
+            textAnchor="middle"
+            fill="#08110D"
+            fontSize="11.5"
+            fontWeight="800"
+            letterSpacing="1.1"
+            fontFamily="Plus Jakarta Sans, Arial, sans-serif"
+          >
+            NMRDA
+          </text>
+          <text
+            x="60"
+            y="101"
+            textAnchor="middle"
+            fill="#E5C77B"
+            fontSize="8.5"
+            fontWeight="700"
+            letterSpacing="1.4"
+            fontFamily="Plus Jakarta Sans, Arial, sans-serif"
+          >
+            SANCTIONED
+          </text>
+        </svg>
+        <p className="mt-3 text-xs font-semibold tracking-wide text-[#F5F2E9]">
+          NMRDA Sanctioned
+        </p>
+        <p className="mt-0.5 text-[11px] leading-snug text-[#9FB0A5]">
+          Nagpur Metro Region Dev. Authority
+        </p>
+      </div>
+
+      {/* 2. RERA / MahaRERA APPROVED LOGO */}
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-[#D4AF5F]/30 bg-[#0D1A14] px-4 py-6 text-center">
+        <svg
+          viewBox="0 0 120 120"
+          className="h-24 w-24 shrink-0 sm:h-28 sm:w-28"
+          role="img"
+          aria-label="MahaRERA Approved Logo"
+        >
+          {/* Regulatory Shield Emblem */}
+          <path
+            d="M60 8L18 23v32c0 27.5 17.5 46.5 42 56 24.5-9.5 42-28.5 42-56V23L60 8z"
+            fill="#09130F"
+            stroke="#D4AF5F"
+            strokeWidth="2.4"
+          />
+          <path
+            d="M60 15L24.5 27.5V54c0 23 14.5 39 35.5 47.5C81 93 95.5 77 95.5 54V27.5L60 15z"
+            fill="none"
+            stroke="#D4AF5F"
+            strokeOpacity="0.4"
+            strokeWidth="1.2"
+          />
+          {/* Skyline & Verified Roof Crown */}
+          <path
+            d="M39 58V39l10.5 9.5L60 34l10.5 14.5L81 39v19H39z"
+            fill="#F4E7C1"
+          />
+          <rect x="37" y="60.5" width="46" height="3.8" rx="1.5" fill="#D4AF5F" />
+          {/* Approved Check Badge */}
+          <rect x="26" y="69" width="68" height="18" rx="5" fill="#D4AF5F" />
+          <text
+            x="60"
+            y="81"
+            textAnchor="middle"
+            fill="#08110D"
+            fontSize="11"
+            fontWeight="800"
+            letterSpacing="0.9"
+            fontFamily="Plus Jakarta Sans, Arial, sans-serif"
+          >
+            MahaRERA
+          </text>
+          <text
+            x="60"
+            y="98"
+            textAnchor="middle"
+            fill="#7CF0A6"
+            fontSize="8.5"
+            fontWeight="700"
+            letterSpacing="1.3"
+            fontFamily="Plus Jakarta Sans, Arial, sans-serif"
+          >
+            APPROVED
+          </text>
+        </svg>
+        <p className="mt-3 text-xs font-semibold tracking-wide text-[#F5F2E9]">
+          RERA Approved
+        </p>
+        <p className="mt-0.5 text-[11px] leading-snug text-[#9FB0A5]">
+          Maharashtra RERA Compliant Layouts
+        </p>
+      </div>
+    </div>
+  );
+}

@@ -297,13 +297,21 @@ export default function CinematicJourney3D({ onExploreEstates }: { onExploreEsta
     let lastChapter = -1;
     let frameId = 0;
     let disposed = false;
+    let isVisible = true;
+    let loopRunning = false;
+    let cachedSectionTop = 0;
+    let cachedTravel = 1;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const clock = new THREE.Clock();
 
-    const readScroll = () => {
+    const measureSection = () => {
       const rect = section.getBoundingClientRect();
-      const travel = Math.max(section.offsetHeight - window.innerHeight, 1);
-      scrollProgress = THREE.MathUtils.clamp(-rect.top / travel, 0, 1);
+      cachedSectionTop = rect.top + window.scrollY;
+      cachedTravel = Math.max(section.offsetHeight - window.innerHeight, 1);
+    };
+
+    const readScroll = () => {
+      scrollProgress = THREE.MathUtils.clamp((window.scrollY - cachedSectionTop) / cachedTravel, 0, 1);
     };
 
     const resize = () => {
@@ -312,6 +320,8 @@ export default function CinematicJourney3D({ onExploreEstates }: { onExploreEsta
       renderer.setSize(w, h, false);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
+      measureSection();
+      readScroll();
     };
 
     const onContextLost = (ev: Event) => {
@@ -320,16 +330,34 @@ export default function CinematicJourney3D({ onExploreEstates }: { onExploreEsta
     };
     canvas.addEventListener("webglcontextlost", onContextLost);
 
+    measureSection();
     readScroll();
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(host);
     window.addEventListener("scroll", readScroll, { passive: true });
+    window.addEventListener("resize", measureSection, { passive: true });
 
     _currentAim.copy(aimSpline.getPoint(0));
 
+    const startLoop = () => {
+      if (disposed || loopRunning || !isVisible || document.hidden) return;
+      loopRunning = true;
+      clock.getDelta();
+      frameId = window.requestAnimationFrame(tick);
+    };
+
+    const stopLoop = () => {
+      loopRunning = false;
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(frameId);
+    };
+
     const tick = () => {
-      if (disposed) return;
+      if (disposed || !isVisible || document.hidden) {
+        loopRunning = false;
+        return;
+      }
       const dt = Math.min(clock.getDelta(), 0.1);
 
       let targetP = scrollProgress;
@@ -373,14 +401,38 @@ export default function CinematicJourney3D({ onExploreEstates }: { onExploreEsta
       }
     };
 
-    frameId = window.requestAnimationFrame(tick);
+    const io = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        isVisible = Boolean(entry?.isIntersecting);
+        if (isVisible) {
+          measureSection();
+          readScroll();
+          startLoop();
+        } else {
+          stopLoop();
+        }
+      },
+      { rootMargin: "240px 0px" },
+    );
+    io.observe(section);
+
+    const onVisibilityChange = () => {
+      if (document.hidden) stopLoop();
+      else startLoop();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    startLoop();
 
     return () => {
       disposed = true;
-      window.cancelAnimationFrame(frameId);
-      window.clearTimeout(frameId);
+      stopLoop();
+      io.disconnect();
       ro.disconnect();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("scroll", readScroll);
+      window.removeEventListener("resize", measureSection);
       canvas.removeEventListener("webglcontextlost", onContextLost);
       envTex.dispose();
       groundTex.dispose();
