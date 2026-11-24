@@ -3,7 +3,9 @@
   "framework": null,
   "buildCommand": "",
   "installCommand": "",
-  "regions": ["sin1"],
+  "regions": [
+    "sin1"
+  ],
   "functions": {
     "api/index.py": {
       "includeFiles": "{app,web,db}/**",
@@ -11,6 +13,12 @@
     }
   },
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index" }
-  ]
+    {
+      "source": "/(.*)",
+      "destination": "/api/index"
+    }
+  ],
+  "git": {
+    "deploymentEnabled": false
+  }
 }
