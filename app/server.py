@@ -517,7 +517,7 @@ class Handler(BaseHTTPRequestHandler):
                                               "message": "Storage is temporarily unavailable. Retry shortly.",
                                               "trace_id": nid("trc")}})
         except Exception:
-            traceback.print_exc()
+            # Provider exceptions can contain credentials; never log payloads.
             try:
                 self._json(500, {"error": {"code": "INTERNAL", "message": "Server error.", "trace_id": nid("trc")}})
             except Exception:

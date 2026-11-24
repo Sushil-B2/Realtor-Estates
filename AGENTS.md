@@ -21,11 +21,13 @@
 
 ---
 
-## 2. Safe Deployment Workflow (`realtor-estates-pwa` Only)
+## 2. Safe Deployment Workflow (`realtor-estates` Only)
 
-1. **Project Isolation:**
-   - Target **only** Vercel project `realtor-estates-pwa` (`prj_NMTd24A8Iz4ig6QWWGtfRBsRwgeS`).
-   - **Never** modify, redeploy, or alter sibling projects (`siftly-veriflow`, `neuro-flow-2-new`) or team-wide shared variables.
+1. **Project Isolation — updated by explicit user authorization:**
+   - Target **only** Vercel project `realtor-estates` (`prj_E7SGbITHWxBXaGpVPYQgLqd9UUtY`) in team `team_s0uBpvnoysN85mFkEn2qqjO7`.
+   - This new dedicated project supersedes the earlier `realtor-estates-pwa` deployment target. Do not modify that older project either.
+   - **Never** modify, redeploy, or alter ANY other Vercel project or team-wide shared setting/variable. Do not copy or retrieve secrets from sibling projects.
+   - No automatic deployment of GitHub `main`: use the verified integration branch and prepare a project-scoped preview first.
 2. **Silent Bundle Build & Upload:**
    - Run `node scripts/safe_bundle_upload.mjs` — it executes `scripts/check_secrets.py`, builds a clean allowlisted tarball in `/tmp` (excluding `.env*`, `.secrets/`, `data/`, `node_modules/`, `.git/`), uploads to Neon Object Storage in-memory without echoing credentials, and prints **only** `BUNDLE_KEY`, `BUNDLE_SHA256`, and `BUNDLE_BYTES`.
 3. **Pre-Deploy Quality Gates:**

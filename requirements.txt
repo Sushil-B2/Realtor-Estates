@@ -1,0 +1,2 @@
+# PostgreSQL runtime driver; no application credentials belong in this file.
+psycopg[binary]==3.2.10
