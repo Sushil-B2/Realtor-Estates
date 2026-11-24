@@ -1,0 +1,10 @@
+# Caddy reverse-proxy config for Hostinger / IONOS / Bluehost Ubuntu VPS
+# Place at /etc/caddy/Caddyfile and run `sudo systemctl reload caddy`
+
+crm.yourdomain.com {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8000 {
+        # Keep Server-Sent Events (/api/v1/events) unbuffered
+        flush_interval -1
+    }
+}

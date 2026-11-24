@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Realtor Estates — Real Estate CRM &amp; Revenue OS</title>
+<meta name="description" content="Adaptive real-estate CRM, plot &amp; unit inventory, WhatsApp &amp; voice AI inbox, statutory cost sheets, and RERA/DPDP compliance in one fast PWA.">
+<meta name="theme-color" content="#0b1120">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Realtor Estates">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div id="nav-progress" aria-hidden="true"></div>
+<div id="app">
+  <div class="auth-split">
+    <div class="auth-hero">
+      <div class="brandbar" style="padding:0;border:0">
+        <div class="logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/></svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">Realtor Estates</div>
+          <div class="brand-sub">Revenue OS</div>
+        </div>
+      </div>
+      <h1>From first portal enquiry to registered sale deed.</h1>
+      <p>Manage buyers, speed-to-lead SLAs, site visits, live plot &amp; tower inventory, statutory cost sheets, channel partners, and human-governed AI agents in one calm daily workspace.</p>
+      <div class="hero-flow" aria-label="Deal sequence">
+        <span class="step">1. Enquiry</span><span class="arr">→</span>
+        <span class="step">2. Site Visit</span><span class="arr">→</span>
+        <span class="step">3. 48h Hold</span><span class="arr">→</span>
+        <span class="step">4. Cost Sheet</span><span class="arr">→</span>
+        <span class="step">5. Index-II</span>
+      </div>
+      <div class="hero-badges">
+        <span class="chip">MahaRERA + 7/12 Vault</span>
+        <span class="chip">WhatsApp &amp; Voice AI</span>
+        <span class="chip">DPDP Consent-First</span>
+        <span class="chip">Postgres RLS Isolated</span>
+      </div>
+      <div class="hero-stat">
+        <div><span>&lt; 90s</span><small>speed-to-lead SLA target</small></div>
+        <div><span>5</span><small>asset categories supported</small></div>
+        <div><span>100%</span><small>human-gated AI approvals</small></div>
+      </div>
+    </div>
+    <main class="auth-panel">
+      <div class="auth-card">
+        <h2>Sign in to workspace</h2>
+        <p class="muted small">Enter your brokerage credentials or launch an instant role demo below.</p>
+        <div class="auth-tabs" role="tablist" aria-label="Authentication mode">
+          <button type="button" class="active" data-act="auth-mode" data-mode="login">Sign in</button>
+          <button type="button" data-act="auth-mode" data-mode="signup">Create workspace</button>
+        </div>
+        <form data-form="login" autocomplete="on">
+          <div class="field">
+            <label for="email">Work email</label>
+            <input class="input" id="email" name="email" type="email" required maxlength="254" autocomplete="username" value="owner@realtorestates.app" placeholder="owner@yourcompany.in">
+          </div>
+          <div class="field">
+            <label for="pw">Password</label>
+            <div class="pw-wrap">
+              <input class="input" id="pw" name="password" type="password" required minlength="10" autocomplete="current-password" value="Demo@12345!">
+              <button type="button" class="pw-toggle" data-act="toggle-pw" aria-label="Show password">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+          <button class="btn primary" type="submit" style="width:100%;padding:10px 14px;font-size:13.5px">Sign in to workspace</button>
+        </form>
+        <div class="demo-creds">
+          <div class="xs b" style="text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">1-Click Role Switcher (Demo Workspace)</div>
+          <div class="role-grid">
+            <button type="button" class="role-btn" data-act="quick-login" data-email="owner@realtorestates.app" data-pw="Demo@12345!">
+              <strong>Owner</strong><span>Full access &amp; PII</span>
+            </button>
+            <button type="button" class="role-btn" data-act="quick-login" data-email="manager@realtorestates.app" data-pw="Demo@12345!">
+              <strong>Manager</strong><span>Sales &amp; approvals</span>
+            </button>
+            <button type="button" class="role-btn" data-act="quick-login" data-email="agent@realtorestates.app" data-pw="Demo@12345!">
+              <strong>Field Agent</strong><span>Masked PII</span>
+            </button>
+          </div>
+          <div class="row wrap" style="margin-top:10px;justify-content:space-between">
+            <a class="xs" href="/cp.html">Channel Partner Portal →</a>
+            <a class="xs" href="/site" target="_blank" rel="noopener">Public Buyer Site →</a>
+          </div>
+        </div>
+        <p class="xs muted" style="margin-top:12px">Consent-gated outreach (DPDP Act 2023 &amp; TRAI). AI agents disclose themselves on every call.</p>
+      </div>
+    </main>
+  </div>
+</div>
+<noscript><p style="padding:20px">Realtor Estates needs JavaScript for the operator console. Public funnel pages and the marketing site work without it.</p></noscript>
+<div id="drawer-root"></div>
+<div id="toasts" role="status" aria-live="polite"></div>
+<div id="offline">Offline mode — showing cached workspace. Queued field updates sync automatically on reconnect.</div>
+<script src="/js/core.js" defer></script>
+<script src="/js/views-ops.js" defer></script>
+<script src="/js/views-ai.js" defer></script>
+<script src="/js/views-growth.js" defer></script>
+<script src="/js/views-platform.js" defer></script>
+<script src="/js/views-workspaces.js" defer></script>
+</body>
+</html>

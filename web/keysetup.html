@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Add a Neon API key — Realtor Estates</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: radial-gradient(circle at 20% 0%, #10243a 0%, #070b12 55%, #05070b 100%);
+    color: #e6edf6; font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    padding: 24px;
+  }
+  .card {
+    width: 100%; max-width: 580px; background: #0e1622; border: 1px solid #1e2c3f;
+    border-radius: 16px; padding: 28px; box-shadow: 0 24px 64px rgba(0,0,0,.55);
+  }
+  h1 { margin: 0 0 4px; font-size: 21px; letter-spacing: -.2px; }
+  .sub { margin: 0 0 18px; color: #90a4bd; font-size: 13.5px; }
+  .step { display: none; }
+  .step.on { display: block; }
+  label { display: block; margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #7f95ae; }
+  input {
+    width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid #24374d;
+    background: #0a1018; color: #e6edf6; font: inherit; font-size: 14.5px;
+  }
+  input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.18); }
+  button, .link-btn {
+    margin-top: 14px; width: 100%; padding: 12px 16px; border-radius: 10px; border: 0;
+    background: linear-gradient(180deg, #3b82f6, #2563eb); color: #fff; font: inherit;
+    font-weight: 600; cursor: pointer; text-align: center; text-decoration: none; display: inline-block;
+  }
+  button:disabled { opacity: .55; cursor: progress; }
+  .ghost { background: #16233a; border: 1px solid #2a405d; color: #dbeafe; margin-top: 10px; }
+  .note { margin-top: 14px; font-size: 12.5px; color: #8ba0b8; }
+  .note code { background: #0a1018; padding: 1px 5px; border-radius: 5px; border: 1px solid #1e2c3f; }
+  .msg { margin-top: 14px; padding: 11px 13px; border-radius: 10px; font-size: 13.5px; display: none; }
+  .msg.on { display: block; }
+  .ok { background: rgba(22,163,74,.13); border: 1px solid rgba(22,163,74,.45); color: #86efac; }
+  .err { background: rgba(220,38,38,.13); border: 1px solid rgba(220,38,38,.45); color: #fca5a5; }
+  .warn { background: rgba(245,158,11,.13); border: 1px solid rgba(245,158,11,.45); color: #fde68a; display: block; margin-bottom: 16px; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; letter-spacing: .05em;
+          text-transform: uppercase; background: #16233a; border: 1px solid #24374d; color: #9db3cc; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; margin-top: 14px; font-size: 13px; }
+  .kv div:nth-child(odd) { color: #7f95ae; }
+  .kv div { word-break: break-all; }
+  .sep { border: 0; border-top: 1px solid #1e2c3f; margin: 18px 0 4px; }
+  .top-links { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .top-links a { color: #93c5fd; font-size: 13px; text-decoration: none; }
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="top-links">
+    <span class="pill">owner only</span>
+    <a href="/#/security">← Back to Security console</a>
+  </div>
+  <h1>Add your Neon API key</h1>
+  <p class="sub">This writes <code>NEON_API_KEY</code> into <code>.secrets/neon-api-key</code> on the server — mode 0600, git-ignored, and <strong>not</strong> loaded by the app process. Nothing you paste is ever echoed, logged, or stored in audit records — only a SHA-256 fingerprint is recorded.</p>
+
+  <div class="msg warn" id="static-viewer-warn">
+    <strong>Viewing raw file?</strong> If clicking buttons below does nothing, you opened <code>web/keysetup.html</code> in the static File Viewer (which has no server connection). Switch to the <strong>Realtor Estates App</strong> Live Preview panel instead, or sign in on the main preview and open <strong>Security → Neon Operator Credentials</strong>.
+  </div>
+
+  <!-- Step 1: owner sign-in -->
+  <section class="step on" id="step-login">
+    <button type="button" id="btn-demo-owner">One-click: Sign in as Demo Owner (owner@realtorestates.app)</button>
+    <hr class="sep">
+    <label for="email">Or enter owner email</label>
+    <input id="email" type="email" autocomplete="username" value="owner@realtorestates.app" spellcheck="false">
+    <label for="password">Owner password</label>
+    <input id="password" type="password" autocomplete="current-password" value="Demo@12345!" placeholder="Demo@12345!">
+    <div id="mfa-login-wrap" style="display:none">
+      <label for="login-code">Authenticator or recovery code</label>
+      <input id="login-code" type="text" autocomplete="one-time-code" placeholder="6-digit code or recovery code">
+    </div>
+    <button type="button" class="ghost" id="btn-login">Sign in with fields above</button>
+    <p class="note">Step 1 of 2. Only an <strong>owner</strong> session may write a credential; a viewer or an anonymous request is refused by the API.</p>
+    <div class="msg err" id="login-err"></div>
+  </section>
+
+  <!-- Step 2: the key + optional branch URL -->
+  <section class="step" id="step-key">
+    <label for="apikey">1. Neon API key (for G3 — Functions deploy)</label>
+    <input id="apikey" type="password" autocomplete="off" spellcheck="false" placeholder="nak_… or napi_… (leave blank if only saving branch URL)">
+
+    <label for="branchurl">2. Disposable Neon test branch URL (optional, for G6 check)</label>
+    <input id="branchurl" type="password" autocomplete="off" spellcheck="false" placeholder="postgresql://neondb_owner:…@ep-…/neondb?sslmode=require">
+
+    <hr class="sep">
+    <label for="confirm-pw">Confirm owner password (step-up confirmation)</label>
+    <input id="confirm-pw" type="password" autocomplete="current-password" placeholder="Owner password">
+    <div id="mfa-stepup-wrap" style="display:none">
+      <label for="stepup-code">Authenticator or recovery code</label>
+      <input id="stepup-code" type="text" autocomplete="one-time-code" placeholder="6-digit code or recovery code">
+    </div>
+    <button type="button" id="btn-save">Save credential(s) to .secrets/ (0600)</button>
+    <p class="note">Step 2 of 2. Get the API key from <strong>console.neon.tech → Account settings → API keys</strong> → <em>Create new API key</em>. Saving replaces any existing value atomically with mode <code>0600</code>.</p>
+    <div class="msg" id="save-msg"></div>
+    <div class="kv" id="status"></div>
+  </section>
+</main>
+<script src="/js/keysetup.js" defer></script>
+</body>
+</html>

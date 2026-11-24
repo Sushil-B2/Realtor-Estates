@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Allow: /projects/samruddhi-estate-phase-3
+Allow: /projects/samruddhi-estate-phase-4
+Allow: /projects/bhagirath-nagari
+Allow: /projects/ananta-akasha
+Disallow: /api/
+Disallow: /plot-buyer-checklist.html
+Disallow: /projects/*/thank-you
+
+Sitemap: /sitemap.xml

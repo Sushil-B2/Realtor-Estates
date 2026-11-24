@@ -1,0 +1,358 @@
+{
+  "score": 100,
+  "generated_at": 1795277856,
+  "results": [
+    {
+      "id": "SA-101",
+      "name": "secret files are 0600 (group/other cannot read)",
+      "ok": true,
+      "severity": "critical",
+      "detail": "",
+      "fix": "chmod 600 on .env, .env.local, data/store.json, data/keys.json"
+    },
+    {
+      "id": "SA-102",
+      "name": "no secret-bearing file is tracked by git",
+      "ok": true,
+      "severity": "critical",
+      "detail": "[]",
+      "fix": "git rm --cached the file, add it to .gitignore, rotate the secret"
+    },
+    {
+      "id": "SA-103",
+      "name": "secret files and source paths are not served by the web tier",
+      "ok": true,
+      "severity": "critical",
+      "detail": "",
+      "fix": "serve only web/ and explicit public assets"
+    },
+    {
+      "id": "SA-104",
+      "name": "no API response contains a live secret value",
+      "ok": true,
+      "severity": "critical",
+      "detail": "",
+      "fix": "redact centrally in cfg.redact() before serialising"
+    },
+    {
+      "id": "SA-105",
+      "name": "static assets contain no secrets",
+      "ok": true,
+      "severity": "critical",
+      "detail": "",
+      "fix": ""
+    },
+    {
+      "id": "SA-106",
+      "name": "error responses carry no stack trace, path or DSN",
+      "ok": true,
+      "severity": "high",
+      "detail": "[]",
+      "fix": "return a fixed error code and log the detail server-side"
+    },
+    {
+      "id": "SA-107",
+      "name": "secret-shaped input is redacted in inspection output",
+      "ok": true,
+      "severity": "high",
+      "detail": "raw canary echoed back",
+      "fix": "redact before returning"
+    },
+    {
+      "id": "SA-108",
+      "name": "server logs contain no secret values",
+      "ok": true,
+      "severity": "high",
+      "detail": "",
+      "fix": "log the redacted DSN only (cfg.redact / db.redact_dsn)"
+    },
+    {
+      "id": "SA-109",
+      "name": "no clipboard write can carry a credential",
+      "ok": true,
+      "severity": "high",
+      "detail": "clipboard calls=0 risky=[]",
+      "fix": "never write tokens/keys to the clipboard; use a copy-action that copies record ids only"
+    },
+    {
+      "id": "SA-110",
+      "name": "security headers present on success and on 404",
+      "ok": true,
+      "severity": "medium",
+      "detail": "",
+      "fix": ""
+    },
+    {
+      "id": "SA-111",
+      "name": "unauthenticated healthz discloses no infrastructure detail",
+      "ok": true,
+      "severity": "high",
+      "detail": "liveness only",
+      "fix": "gate infra fields behind an owner session"
+    },
+    {
+      "id": "SB-201",
+      "name": "SQL injection payloads do not reach the database as SQL",
+      "ok": true,
+      "severity": "critical",
+      "detail": "",
+      "fix": "keep every query parameterised"
+    },
+    {
+      "id": "SB-202",
+      "name": "user input is stored/returned as data, not markup",
+      "ok": true,
+      "severity": "high",
+      "detail": "",
+      "fix": "escape on render (esc()) and set Content-Type: application/json"
+    },
+    {
+      "id": "SB-203",
+      "name": "path traversal cannot escape the web root",
+      "ok": true,
+      "severity": "critical",
+      "detail": "",
+      "fix": "resolve and confine to web/"
+    },
+    {
+      "id": "SB-204",
+      "name": "no response-header injection via field values",
+      "ok": true,
+      "severity": "high",
+      "detail": "headers clean",
+      "fix": "never echo input into headers"
+    },
+    {
+      "id": "SB-205",
+      "name": "prototype-pollution keys are inert",
+      "ok": true,
+      "severity": "medium",
+      "detail": "ignored",
+      "fix": "whitelist accepted fields"
+    },
+    {
+      "id": "SB-206",
+      "name": "a user cannot assign themselves a higher role",
+      "ok": true,
+      "severity": "critical",
+      "detail": "rejected or ignored",
+      "fix": "whitelist mutable profile fields; roles only via owner/admin route"
+    },
+    {
+      "id": "SB-207",
+      "name": "state-changing request without a CSRF token is rejected",
+      "ok": true,
+      "severity": "high",
+      "detail": "accepted (401)",
+      "fix": "require X-CSRF-Token on every mutation"
+    },
+    {
+      "id": "SB-208",
+      "name": "tenant data requires a session",
+      "ok": true,
+      "severity": "critical",
+      "detail": "[]",
+      "fix": ""
+    },
+    {
+      "id": "SB-210",
+      "name": "session cookie is HttpOnly + SameSite",
+      "ok": true,
+      "severity": "high",
+      "detail": "status=200 cookie=re_refresh=Aym5umfKHMgtdS6qfxvfwm4scmsMVb3GIhpsfRgQjxE; Path=/api/v1/auth; HttpOnly; SameSite=Strict; Max-Age=",
+      "fix": "always set HttpOnly; SameSite=Strict"
+    },
+    {
+      "id": "SB-209",
+      "name": "repeated failed logins are rate limited",
+      "ok": true,
+      "severity": "high",
+      "detail": "statuses=[401, 429]",
+      "fix": "per-IP + per-account throttle with backoff"
+    },
+    {
+      "id": "SB-211",
+      "name": "cross-tenant object access is denied",
+      "ok": null,
+      "severity": "critical",
+      "detail": "no sample contact",
+      "fix": ""
+    },
+    {
+      "id": "SB-212",
+      "name": "webhook URLs are validated (no SSRF to metadata/localhost)",
+      "ok": true,
+      "severity": "high",
+      "detail": "rejected (401)",
+      "fix": "allowlist https + block private ranges"
+    },
+    {
+      "id": "SB-213",
+      "name": "oversized request bodies are rejected",
+      "ok": true,
+      "severity": "medium",
+      "detail": "status=413",
+      "fix": "cap body size before parsing"
+    },
+    {
+      "id": "SB-215",
+      "name": "a tampered session token is rejected",
+      "ok": null,
+      "severity": "critical",
+      "detail": "no session cookie",
+      "fix": ""
+    },
+    {
+      "id": "SB-216",
+      "name": "a viewer cannot reach owner-only operations",
+      "ok": true,
+      "severity": "critical",
+      "detail": "[]",
+      "fix": "enforce role checks server-side on every route"
+    },
+    {
+      "id": "SB-217",
+      "name": "authenticated API responses are marked no-store",
+      "ok": true,
+      "severity": "medium",
+      "detail": "Cache-Control=no-store, private",
+      "fix": "set Cache-Control: no-store on /api/** responses"
+    },
+    {
+      "id": "SB-218",
+      "name": "the public funnel endpoint is rate limited",
+      "ok": true,
+      "severity": "medium",
+      "detail": "statuses=[422, 429] leads created=0",
+      "fix": "per-IP throttle on public writes"
+    },
+    {
+      "id": "SB-219",
+      "name": "the event stream requires a session",
+      "ok": true,
+      "severity": "high",
+      "detail": "anonymous GET /api/v1/events \u2192 401",
+      "fix": "require a session for /api/v1/events"
+    },
+    {
+      "id": "SB-220",
+      "name": "a forged Host header does not appear in responses",
+      "ok": true,
+      "severity": "low",
+      "detail": "ignored",
+      "fix": ""
+    },
+    {
+      "id": "SB-214",
+      "name": "malformed JSON returns 4xx, not 5xx",
+      "ok": true,
+      "severity": "medium",
+      "detail": "status=400",
+      "fix": "validate JSON and return 400"
+    },
+    {
+      "id": "SC-301",
+      "name": "the application's database leg is TLS",
+      "ok": true,
+      "severity": "critical",
+      "detail": "libpq ssl_in_use=True server_side_ssl=False (pooler terminates TLS)",
+      "fix": ""
+    },
+    {
+      "id": "SC-302",
+      "name": "application role is not a superuser",
+      "ok": true,
+      "severity": "high",
+      "detail": "superuser=False createdb=False createrole=False",
+      "fix": "use a least-privilege role for the app; keep the owner for migrations only"
+    },
+    {
+      "id": "SC-303",
+      "name": "audit table is protected by an enabled UPDATE/DELETE trigger",
+      "ok": true,
+      "severity": "critical",
+      "detail": "triggers=[('O', 'CREATE TRIGGER re_audit_no_update BEFORE')]",
+      "fix": "re-create db/001_init.sql trigger"
+    },
+    {
+      "id": "SC-304",
+      "name": "row-level security is enabled with a tenant policy",
+      "ok": true,
+      "severity": "high",
+      "detail": "enabled=True forced=True policies=1",
+      "fix": "RE_DB_RLS=1 npm run db:migrate; note the owner bypasses RLS by design"
+    },
+    {
+      "id": "SC-305",
+      "name": "no credential is stored in document or audit rows",
+      "ok": true,
+      "severity": "critical",
+      "detail": "documents=0 audit=0",
+      "fix": "redact before persisting"
+    },
+    {
+      "id": "SC-306",
+      "name": "contact PII is encrypted at rest",
+      "ok": true,
+      "severity": "high",
+      "detail": "0/0 contacts have a plaintext phone/email column",
+      "fix": "encrypt PII with the tenant field key (see docs/11) and store only blind-index hashes"
+    },
+    {
+      "id": "SC-307",
+      "name": "audit chain is linear and hashes verify",
+      "ok": true,
+      "severity": "critical",
+      "detail": "0 break(s) in 0 rows",
+      "fix": "scripts/repair_audit_chain.py --all --apply"
+    },
+    {
+      "id": "SC-308",
+      "name": "every query is parameterised (no string-built SQL)",
+      "ok": true,
+      "severity": "critical",
+      "detail": "0 risky call(s)",
+      "fix": "use %s placeholders"
+    },
+    {
+      "id": "SD-401",
+      "name": "an agent never echoes a credential it was given",
+      "ok": true,
+      "severity": "critical",
+      "detail": "redacted",
+      "fix": "redact output (sec.redact_secrets)"
+    },
+    {
+      "id": "SD-402",
+      "name": "the model prompt carries no loaded secret",
+      "ok": true,
+      "severity": "critical",
+      "detail": "[]",
+      "fix": "never interpolate credentials into prompts"
+    },
+    {
+      "id": "SD-403",
+      "name": "personal data is minimised before it reaches a model",
+      "ok": true,
+      "severity": "high",
+      "detail": "no raw PII",
+      "fix": "pass contact_id + coarse attributes; fetch details only after a tool call"
+    },
+    {
+      "id": "SD-404",
+      "name": "agent guardrails run before the model (kill switch respected)",
+      "ok": true,
+      "severity": "high",
+      "detail": "run_agent stops before any model call when kill_switch/status/spend-cap trip",
+      "fix": ""
+    },
+    {
+      "id": "SD-405",
+      "name": "no credential is ever placed in a prompt by the app",
+      "ok": true,
+      "severity": "high",
+      "detail": "no code path interpolates SECRET_INVENTORY values into prompts",
+      "fix": ""
+    }
+  ]
+}

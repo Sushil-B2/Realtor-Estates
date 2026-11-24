@@ -1,0 +1,60 @@
+name: Verify & Sentinel Security Gate
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      RE_ENV: development
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Generate ephemeral CI master key
+        run: python3 -c "import secrets; print('RE_MASTER_KEY=' + secrets.token_hex(32))" >> "$GITHUB_ENV"
+
+      - name: Install Python test & Postgres gate packages
+        run: pip install pytest psycopg[binary] embedded-postgres
+
+      - name: Compile, JS syntax, pytest, secret hygiene, and doc facts
+        run: |
+          python3 -m compileall -q app scripts tests sentinel
+          node scripts/check-js.mjs
+          python3 -m pytest tests -q
+          python3 scripts/check_secrets.py --history
+          python3 scripts/doc_facts.py --check
+
+      - name: Real PostgreSQL + RLS + concurrency gate (G6)
+        run: python3 scripts/verify_postgres.py --real
+
+      - name: Sentinel policy gate self-test & deep strict scan (docs/35)
+        run: |
+          python3 sentinel/agent.py --self-test
+          TMP_DIR="$(mktemp -d)"
+          RE_DATA_DIR="$TMP_DIR" RE_DB=json RE_AUTOMATION_TICK=0 \
+            RE_ENVELOPE_FILE="$TMP_DIR/dek.envelope" \
+            RE_KMS_KEK_FILE="$TMP_DIR/kek.json" \
+            RE_SECRETS_FILE="$TMP_DIR/neon-api-key" \
+            python3 -m app.server --host 127.0.0.1 --port 18080 >/dev/null 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true; rm -rf "$TMP_DIR"' EXIT
+          for _ in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:18080/healthz >/dev/null && break
+            sleep 0.25
+          done
+          SENTINEL_BASE="http://127.0.0.1:18080" DATABASE_URL="" \
+            python3 sentinel/agent.py --base http://127.0.0.1:18080 --deep --strict

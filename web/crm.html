@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vertical desk — Realtor Estates</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+  body { margin: 0; background: var(--bg); }
+  .vtop { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 14px;
+          padding: 10px 18px; background: var(--sidebar); color: var(--on-dark); }
+  .vtop .brand { font-weight: 650; letter-spacing: .2px; }
+  .vtop .sub { color: var(--on-dark-muted); font-size: 12px; }
+  .vtop .spacer { flex: 1; }
+  .vtop a { color: var(--on-dark); text-decoration: none; font-size: 13px; opacity: .85; }
+  .vtop a:hover { opacity: 1; }
+  .wrap { padding: 18px; display: grid; gap: 16px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 12px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+          padding: 12px 14px; box-shadow: var(--shadow-1); }
+  .tile .k { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .tile .v { font-size: 20px; font-weight: 660; margin-top: 4px; }
+  .tile .n { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .tile.warn .v { color: var(--amber); }
+  .tile.good .v { color: var(--emerald); }
+
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) 430px; gap: 16px; align-items: start; }
+  @media (max-width: 1100px) { .split { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+          box-shadow: var(--shadow-1); }
+  .card > header { display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+                   border-bottom: 1px solid var(--border); }
+  .card > header h2 { margin: 0; font-size: 14px; }
+  .card > header .spacer { flex: 1; }
+  .card .body { padding: 12px 14px; }
+  .hint { font-size: 12px; color: var(--muted); }
+
+  .board { display: flex; gap: 10px; overflow-x: auto; padding: 12px; }
+  .col { min-width: 176px; flex: 1 0 176px; }
+  .col h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
+            display: flex; justify-content: space-between; }
+  .col h3 .count { color: var(--ink-2); font-weight: 600; }
+  .deal { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--brand-2);
+          border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 8px; cursor: pointer;
+          box-shadow: var(--shadow-1); }
+  .deal:hover { border-color: var(--brand); }
+  .deal.sel { box-shadow: 0 0 0 2px var(--brand-soft), var(--shadow-2); border-color: var(--brand); }
+  .deal .t { font-size: 12.5px; font-weight: 600; line-height: 1.35; }
+  .deal .m { font-size: 11.5px; color: var(--muted); margin-top: 3px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .deal .v { font-variant-numeric: tabular-nums; color: var(--ink-2); }
+
+  .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 1px 7px;
+          border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--ink-2); }
+  .pill.ok { background: var(--emerald-soft); border-color: #b6e3d1; color: #05603a; }
+  .pill.warn { background: var(--amber-soft); border-color: #f2d9ac; color: #8a4b06; }
+  .pill.bad { background: var(--danger-soft); border-color: #f6c9c5; color: #91201899; color: var(--danger); }
+  .pill.info { background: var(--info-soft); border-color: #b8e0e8; color: #0b5c6e; }
+
+  .drawer { position: sticky; top: 72px; }
+  .kv { display: grid; grid-template-columns: 108px 1fr; gap: 6px 10px; font-size: 13px; }
+  .kv dt { color: var(--muted); font-size: 12px; }
+  .kv dd { margin: 0; }
+
+  .steps { list-style: none; margin: 0; padding: 0; }
+  .steps li { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: 12.5px; }
+  .steps li:last-child { border-bottom: 0; }
+  .steps .mark { width: 16px; text-align: center; font-weight: 700; }
+  .steps .mark.ok { color: var(--emerald); }
+  .steps .mark.no { color: var(--amber); }
+  .steps .why { color: var(--muted); font-size: 11.5px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input, select, button, textarea { font: inherit; }
+  input, select { padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: #fff; font-size: 13px; }
+  label.f { display: grid; gap: 4px; font-size: 11px; color: var(--muted); }
+  button { padding: 6px 10px; border-radius: var(--r-sm); border: 1px solid var(--border-strong);
+           background: var(--surface); color: var(--ink); cursor: pointer; font-size: 12.5px; }
+  button:hover { border-color: var(--brand); color: var(--brand); }
+  button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  button.primary:hover { background: var(--brand-2); color: #fff; }
+  button.ghost { border-color: transparent; background: transparent; color: var(--brand); padding: 2px 6px; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  .match { border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 8px; }
+  .match .top { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 600; }
+  .bar { height: 5px; border-radius: 99px; background: var(--border); margin: 6px 0; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--brand); }
+  .match ul { margin: 4px 0 0; padding-left: 16px; color: var(--muted); font-size: 11.5px; }
+
+  .unitgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+  .unit { border: 1px solid var(--border); border-radius: var(--r-sm); padding: 7px 8px; background: var(--surface); }
+  .unit .no { font-weight: 650; font-size: 13px; display: flex; justify-content: space-between; }
+  .unit .pr { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .unit .acts { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+  .unit .acts button { padding: 1px 6px; font-size: 11px; }
+  .unit.available { border-left: 3px solid var(--emerald); }
+  .unit.blocked { border-left: 3px solid var(--amber); background: var(--amber-soft); }
+  .unit.booked { border-left: 3px solid var(--brand); background: var(--brand-soft); }
+  .unit.sold { border-left: 3px solid var(--muted); opacity: .62; }
+  .unit.withdrawn { border-left: 3px solid var(--danger); opacity: .62; }
+
+  .attrgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)); gap: 8px; }
+  .attrgrid label.f input, .attrgrid label.f select { width: 100%; }
+  .catbtn { padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); font-size: 12px; }
+  .catbtn[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .catbtn .n { opacity: .7; font-size: 11px; margin-left: 4px; }
+  .req { color: var(--danger); }
+  .result { border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 8px; }
+  .result .top { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 600; }
+  .result .meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .result ul { margin: 4px 0 0; padding-left: 16px; color: var(--muted); font-size: 11.5px; }
+  .scoredot { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .toast { position: fixed; right: 16px; bottom: 16px; z-index: 60; display: grid; gap: 8px; max-width: 380px; }
+  .toast div { background: var(--ink); color: #fff; padding: 9px 12px; border-radius: var(--r-sm);
+               font-size: 12.5px; box-shadow: var(--shadow-3); }
+  .toast div.bad { background: #8c1d18; }
+  .toast div.ok { background: #06603f; }
+  .empty { color: var(--muted); font-size: 12.5px; padding: 8px 0; }
+
+  :focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+  .wrap { width:100%; max-width:1440px; }
+  .card { min-width:0; }
+  .card .body { overflow-x:auto; }
+  button, input, select { min-height:40px; }
+  @media (max-width:680px) {
+    .wrap { padding:12px; gap:12px; }
+    .cptop, .vtop { flex-wrap:wrap; padding:12px; }
+    .auth { width:100%; margin:4vh auto; }
+    .tiles { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  }
+</style>
+</head>
+<body>
+<div class="vtop">
+  <div>
+    <h1 class="brand" style="margin:0;font-size:16px">Vertical desk</h1>
+    <div class="sub" id="who">loading…</div>
+  </div>
+  <div class="spacer"></div>
+  <a href="/">← Console</a>
+  <a href="/cp.html">Partner portal</a>
+  <a href="#" id="refresh">Refresh</a>
+</div>
+
+<div class="wrap">
+  <div class="tiles" id="tiles"></div>
+
+  <div class="split">
+    <section class="card">
+      <header>
+        <h2>Pipeline</h2>
+        <span class="hint">enquiry → site visit → token → agreement → registration</span>
+        <div class="spacer"></div>
+        <span class="hint" id="boardnote"></span>
+      </header>
+      <div class="board" id="board"></div>
+    </section>
+
+    <aside class="card drawer" id="drawer">
+      <header><h2>Deal</h2><div class="spacer"></div><span class="hint" id="drawerid"></span></header>
+      <div class="body"><div class="empty">Pick a deal on the board to see what it still needs.</div></div>
+    </aside>
+  </div>
+
+  <div class="split">
+    <section class="card">
+      <header>
+        <h2>Site visits</h2>
+        <div class="spacer"></div>
+        <span class="hint" id="visitnote"></span>
+      </header>
+      <div class="body">
+        <form id="visitform" class="row" style="margin-bottom:12px">
+          <label class="f">Contact<select id="v_contact" required></select></label>
+          <label class="f">Property<select id="v_property" required></select></label>
+          <label class="f">When<input id="v_when" type="datetime-local" required></label>
+          <label class="f">Minutes<input id="v_dur" type="number" min="15" max="240" step="15" value="45"></label>
+          <label class="f">Pickup<input id="v_pickup" placeholder="Cab / office" maxlength="120"></label>
+          <button class="primary" type="submit" style="align-self:end">Schedule</button>
+        </form>
+        <table>
+          <thead><tr><th>When</th><th>Contact</th><th>Property</th><th>Status</th><th>Feedback</th><th></th></tr></thead>
+          <tbody id="visits"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <header><h2>Needs attention</h2></header>
+      <div class="body" id="blockers"></div>
+    </section>
+  </div>
+
+  <div class="split">
+    <section class="card">
+      <header>
+        <h2>Speed to lead</h2>
+        <span class="hint">first outbound message vs the source's window</span>
+        <div class="spacer"></div>
+        <span class="hint" id="slanote"></span>
+      </header>
+      <div class="body">
+        <div class="tiles" id="slatiles" style="margin-bottom:10px"></div>
+        <table>
+          <thead><tr><th>Lead</th><th>Source</th><th>Clock</th><th>Status</th><th></th></tr></thead>
+          <tbody id="sla"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <header><h2>Portal feeds</h2><div class="spacer"></div><span class="hint">leads by source</span></header>
+      <div class="body" id="sources"></div>
+    </section>
+  </div>
+
+  <div class="split">
+    <section class="card">
+      <header>
+        <h2>Channel partners</h2>
+        <div class="spacer"></div>
+        <span class="hint" id="cpnote"></span>
+      </header>
+      <div class="body">
+        <div id="cpregs"></div>
+        <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:14px 0 6px">Partner network</h3>
+        <table>
+          <thead><tr><th>Firm</th><th>Rate</th><th>Buyers</th><th>Visits</th><th>Protection</th></tr></thead>
+          <tbody id="cppartners"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <header><h2>Partner payouts</h2><div class="spacer"></div><span class="hint" id="paynote"></span></header>
+      <div class="body" id="cppayouts"></div>
+    </section>
+  </div>
+
+  <div class="split">
+    <section class="card">
+      <header>
+        <h2>Property catalogue</h2>
+        <span class="hint">the form changes with the category</span>
+        <div class="spacer"></div>
+        <span class="hint" id="taxnote"></span>
+      </header>
+      <div class="body">
+        <div class="row" id="taxcats" style="margin-bottom:10px"></div>
+        <div class="row" style="margin-bottom:10px">
+          <label class="f">Title<input id="tax_title" maxlength="160" style="min-width:210px" placeholder="Bhiwandi warehouse Block C"></label>
+          <label class="f">City<input id="tax_city" maxlength="60" value="Nanded"></label>
+          <label class="f">Locality<input id="tax_locality" maxlength="80"></label>
+        </div>
+        <div class="row" style="margin-bottom:10px">
+          <label class="f">Type<select id="tax_type"></select></label>
+          <label class="f">Deal<select id="tax_deal"></select></label>
+          <label class="f">Area<input id="tax_area" type="number" min="0" step="any" style="width:110px"></label>
+          <label class="f">Unit<select id="tax_unit"></select></label>
+          <label class="f">Price basis<select id="tax_basis"></select></label>
+          <label class="f">Price<input id="tax_price" type="number" min="0" step="any" style="width:130px"></label>
+        </div>
+        <div id="tax_fields" class="attrgrid"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="primary" id="tax_save">Save listing</button>
+          <span class="hint" id="tax_req"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <header>
+        <h2>Find a match</h2>
+        <div class="spacer"></div>
+        <span class="hint">budget and area are scored, not filtered</span>
+      </header>
+      <div class="body">
+        <div class="row" style="margin-bottom:8px">
+          <label class="f">Category<select id="q_cat"></select></label>
+          <label class="f">Deal<select id="q_deal"></select></label>
+          <label class="f">Budget max<input id="q_budget" type="number" min="0" step="any" style="width:130px"></label>
+          <label class="f">BHK min<input id="q_bhk" type="number" min="0" max="20" style="width:74px"></label>
+        </div>
+        <div class="row" style="margin-bottom:8px">
+          <label class="f">Area min<input id="q_amin" type="number" min="0" step="any" style="width:100px"></label>
+          <label class="f">Area max<input id="q_amax" type="number" min="0" step="any" style="width:100px"></label>
+          <label class="f">Unit<select id="q_unit"></select></label>
+          <label class="f">Must have<input id="q_must" maxlength="120" placeholder="power backup, gym" style="width:170px"></label>
+          <label class="f">City<input id="q_city" maxlength="60" placeholder="any" style="width:110px"></label>
+        </div>
+        <div class="row" style="margin-bottom:10px">
+          <button class="primary" id="q_run">Search inventory</button>
+          <span class="hint" id="q_note"></span>
+        </div>
+        <div id="q_results"><div class="empty">Set a category or a budget and search — every hit comes back with the reasons it ranked there.</div></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <header>
+      <h2>Automation runtime</h2>
+      <span class="hint">triggers fire on a tick · consent, quiet hours and a frequency cap gate every send</span>
+      <div class="spacer"></div>
+      <span class="hint" id="autnote">—</span>
+    </header>
+    <div class="body">
+      <div class="tiles" id="auttiles" style="margin-bottom:12px"></div>
+      <div class="row" style="margin-bottom:12px">
+        <button class="primary" id="aut_tick">Run a tick</button>
+        <button id="aut_dry">Dry run</button>
+        <select id="aut_book" style="max-width:280px"></select>
+        <button id="aut_install">Install playbook</button>
+        <span class="hint" id="autresult"></span>
+      </div>
+      <table>
+        <thead><tr><th>Automation</th><th>Trigger</th><th>Steps</th><th>Runs</th><th>State</th></tr></thead>
+        <tbody id="autfleet"></tbody>
+      </table>
+      <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:14px 0 6px">Needs a human</h3>
+      <div id="autdead"><div class="empty">Nothing blocked, deferred or dead.</div></div>
+    </div>
+  </section>
+
+
+  <section class="card">
+    <header>
+      <h2>Money</h2>
+      <span class="hint">a token is custody (receipt, no GST) · commission is our supply (18% GST, 5% TDS withheld)</span>
+      <div class="spacer"></div>
+      <span class="hint" id="moneynote">—</span>
+    </header>
+    <div class="body">
+      <div class="tiles" id="moneytiles" style="margin-bottom:12px"></div>
+      <div class="row" style="margin-bottom:12px">
+        <input id="moneydeal" placeholder="deal id — issue a commission tax invoice" style="min-width:280px">
+        <button id="moneyissue">Issue tax invoice</button>
+        <button id="moneyreconcile">Reconcile verified webhooks</button>
+        <span class="hint" id="moneyresult"></span>
+      </div>
+      <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:6px 0">Documents</h3>
+      <table>
+        <thead><tr><th>Number</th><th>Type</th><th>Deal</th><th>Taxable</th><th>GST</th><th>TDS</th><th>Total</th><th>Net due</th><th>State</th></tr></thead>
+        <tbody id="moneyinvoices"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <header>
+      <h2>Inventory</h2>
+      <select id="invprop" style="max-width:320px"></select>
+      <div class="spacer"></div>
+      <span class="hint" id="invnote"></span>
+    </header>
+    <div class="body">
+      <div class="photostrip" id="invphotos"></div>
+      <div class="tiles" id="invtiles" style="margin-bottom:12px"></div>
+      <div id="invgrid" class="unitgrid"></div>
+      <div class="hint" style="margin-top:10px">
+        A hold belongs to one deal for a fixed window and releases itself when it lapses;
+        a unit can only be sold by the deal that booked it. Booking happens on the token stage
+        when the deal has a unit attached.
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/js/crm.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://api-crm.yourdomain.com/api/:path*" },
+    { "source": "/f/:slug*", "destination": "https://api-crm.yourdomain.com/f/:slug*" },
+    { "source": "/healthz", "destination": "https://api-crm.yourdomain.com/healthz" }
+  ]
+}

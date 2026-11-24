@@ -1,0 +1,16 @@
+[Unit]
+Description=Realtor Estates Revenue OS
+After=network.target
+
+[Service]
+Type=simple
+User=realtor
+WorkingDirectory=/home/realtor/realtor-estates
+ExecStart=/usr/bin/python3 -m app.server --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

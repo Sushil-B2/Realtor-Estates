@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Channel partner portal — Realtor Estates</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+  body { margin: 0; background: var(--bg); }
+  .cptop { display: flex; align-items: center; gap: 12px; padding: 12px 18px; background: var(--sidebar); color: var(--on-dark); }
+  .cptop .brand { font-weight: 650; }
+  .cptop .sub { font-size: 12px; color: var(--on-dark-muted); }
+  .cptop .spacer { flex: 1; }
+  .cptop a, .cptop button { color: var(--on-dark); background: transparent; border: 1px solid rgba(255,255,255,.25);
+                            border-radius: 8px; padding: 5px 10px; font-size: 12.5px; cursor: pointer; text-decoration: none; }
+  .wrap { padding: 18px; display: grid; gap: 16px; max-width: 1180px; margin: 0 auto; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-1); }
+  .card > header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  .card > header h2 { margin: 0; font-size: 14px; }
+  .card > header .spacer { flex: 1; }
+  .card .body { padding: 14px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 12px 14px; }
+  .tile .k { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .tile .v { font-size: 19px; font-weight: 660; margin-top: 4px; }
+  .tile .n { font-size: 12px; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  input, select, button { font: inherit; }
+  input { padding: 7px 9px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); width: 100%; }
+  button { padding: 7px 12px; border-radius: var(--r-sm); border: 1px solid var(--border-strong); background: #fff; cursor: pointer; }
+  button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  button.primary:hover { background: var(--brand-2); }
+  label.f { display: grid; gap: 4px; font-size: 11px; color: var(--muted); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  .pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px;
+          border: 1px solid var(--border-strong); background: var(--surface-2); }
+  .pill.ok { background: var(--emerald-soft); border-color: #b6e3d1; color: #05603a; }
+  .pill.warn { background: var(--amber-soft); border-color: #f2d9ac; color: #8a4b06; }
+  .pill.bad { background: var(--danger-soft); border-color: #f6c9c5; color: var(--danger); }
+  .hint { font-size: 12px; color: var(--muted); }
+  .err { color: var(--danger); font-size: 12.5px; min-height: 16px; }
+  .auth { max-width: 380px; margin: 8vh auto; }
+  .stack { display: grid; gap: 10px; }
+
+  :focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+  .wrap { width:100%; max-width:1440px; }
+  .card { min-width:0; }
+  .card .body { overflow-x:auto; }
+  button, input, select { min-height:40px; }
+  @media (max-width:680px) {
+    .wrap { padding:12px; gap:12px; }
+    .cptop, .vtop { flex-wrap:wrap; padding:12px; }
+    .auth { width:100%; margin:4vh auto; }
+    .tiles { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  }
+</style>
+</head>
+<body>
+<div class="cptop">
+  <div>
+    <h1 class="brand" style="margin:0;font-size:16px">Partner portal</h1>
+    <div class="sub" id="who">Sign in with the login your brokerage issued</div>
+  </div>
+  <div class="spacer"></div>
+  <a href="/" id="house">Brokerage console</a>
+  <button id="logout" hidden>Sign out</button>
+</div>
+
+<div class="wrap">
+  <!-- sign in -->
+  <section class="card auth" id="authcard">
+    <header><h2>Sign in</h2></header>
+    <div class="body stack">
+      <form id="loginform" class="stack">
+        <label class="f">Email<input id="email" type="email" autocomplete="username" required></label>
+        <label class="f">Password<input id="password" type="password" autocomplete="current-password" required></label>
+        <button class="primary" type="submit">Sign in</button>
+        <div class="err" id="autherr"></div>
+      </form>
+      <div class="hint">This portal is separate from the brokerage's own console. You see only the buyers you registered.</div>
+    </div>
+  </section>
+
+  <div id="portal" hidden>
+    <div class="tiles" id="tiles"></div>
+
+    <section class="card" style="margin-top:16px">
+      <header>
+        <h2>Inventory</h2>
+        <div class="spacer"></div>
+        <span class="hint" id="invnote">—</span>
+      </header>
+      <div class="body">
+        <div class="row" style="margin-bottom:12px;flex-wrap:wrap">
+          <input id="i_q" placeholder="Search title, locality, type" style="min-width:220px">
+          <select id="i_city"><option value="">All cities</option></select>
+          <select id="i_type"><option value="">All types</option></select>
+          <input id="i_min" type="number" min="0" step="100000" placeholder="Min ₹" style="max-width:130px">
+          <input id="i_max" type="number" min="0" step="100000" placeholder="Max ₹" style="max-width:130px">
+          <button id="i_go" class="primary">Show stock</button>
+        </div>
+        <div class="tiles" id="invtiles" style="margin-bottom:12px"></div>
+        <table>
+          <thead><tr><th></th><th>Property</th><th>Where</th><th>Price</th><th>Free</th><th>Your estimate</th><th>Can you advertise it?</th></tr></thead>
+          <tbody id="inventory"></tbody>
+        </table>
+        <div class="hint" id="withheld" style="margin-top:10px"></div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:16px">
+      <header><h2>Register a buyer</h2><div class="spacer"></div><span class="hint">the claim is protected once the brokerage approves it</span></header>
+      <div class="body">
+        <form id="regform" class="grid2">
+          <label class="f">Buyer name<input id="r_name" required maxlength="80"></label>
+          <label class="f">Mobile number<input id="r_phone" required inputmode="tel" placeholder="10-digit Indian mobile"></label>
+          <label class="f">City<input id="r_city" maxlength="60"></label>
+          <label class="f">Requirement<input id="r_req" maxlength="200" placeholder="e.g. 2400 sqft plot, east facing"></label>
+          <label class="f">Budget min (₹)<input id="r_min" type="number" min="0" step="100000"></label>
+          <label class="f">Budget max (₹)<input id="r_max" type="number" min="0" step="100000"></label>
+          <div class="stack" style="grid-column:1/-1">
+            <button class="primary" type="submit">Submit registration</button>
+            <div class="err" id="regerr"></div>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:16px">
+      <header><h2>My buyers</h2><div class="spacer"></div><span class="hint" id="leadnote"></span></header>
+      <div class="body">
+        <table>
+          <thead><tr><th>Buyer</th><th>Status</th><th>Protection</th><th>Visits</th><th>Deal</th></tr></thead>
+          <tbody id="leads"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:16px">
+      <header><h2>Site visits</h2><div class="spacer"></div><span class="hint" id="visitnote"></span></header>
+      <div class="body">
+        <table>
+          <thead><tr><th>When</th><th>Buyer</th><th>Property</th><th>Status</th><th>Credited</th></tr></thead>
+          <tbody id="visits"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:16px">
+      <header><h2>Earnings</h2><div class="spacer"></div><span class="hint">recorded = from the brokerage ledger · expected = at your rate</span></header>
+      <div class="body">
+        <div class="tiles" id="earningtiles" style="margin-bottom:12px"></div>
+        <table>
+          <thead><tr><th>Deal</th><th>Stage</th><th>Value</th><th>Your share</th><th>Basis</th><th>Payout</th></tr></thead>
+          <tbody id="earnings"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script src="/js/cp.js"></script>
+</body>
+</html>

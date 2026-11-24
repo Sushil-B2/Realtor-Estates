@@ -1,0 +1,111 @@
+{
+  "generated_at": 1795447137,
+  "target": "http://127.0.0.1:8000",
+  "modules": [
+    "authz",
+    "frontend",
+    "inject",
+    "session",
+    "transport",
+    "agent",
+    "db",
+    "xff"
+  ],
+  "requests": 237,
+  "blocked_actions": [],
+  "gate_self_test": [
+    {
+      "class": "DESTRUCTIVE",
+      "action": "DELETE /api/v1/tenant/users/usr_1",
+      "expected": "refused",
+      "outcome": "refused (deleting or editing a human account is destructive)",
+      "ok": true
+    },
+    {
+      "class": "ANALYZE",
+      "action": "POST /api/v1/tenant/kill-switch",
+      "expected": "refused",
+      "outcome": "refused (enabling the tenant kill switch is a destructive tenant-wide)",
+      "ok": true
+    },
+    {
+      "class": "EXFILTRATE",
+      "action": "POST /x",
+      "expected": "refused",
+      "outcome": "refused (the agent may not send data off-host)",
+      "ok": true
+    },
+    {
+      "class": "ANALYZE",
+      "action": "GET https://evil.example/steal",
+      "expected": "refused",
+      "outcome": "refused (host 'evil.example' is outside the authorised scope)",
+      "ok": true
+    },
+    {
+      "class": "VOLUMETRIC",
+      "action": "GET /api/v1/contacts",
+      "expected": "refused",
+      "outcome": "refused (burst of 5000 exceeds the denial-of-service ceiling)",
+      "ok": true
+    },
+    {
+      "class": "WRITE_REPORT",
+      "action": "/tmp/outside-sentinel.json",
+      "expected": "refused",
+      "outcome": "refused (EXFILTRATE: report path '/tmp/outside-sentinel.json' is outs)",
+      "ok": true
+    },
+    {
+      "class": "WRITE_REPORT",
+      "action": "/home/user/realtor-estates/reports/sentinel-report.json",
+      "expected": "refused",
+      "outcome": "refused (EXFILTRATE: report content contains unredacted credential ma)",
+      "ok": true
+    },
+    {
+      "class": "WRITE_REPORT",
+      "action": "/home/user/realtor-estates/reports/sentinel-report.json",
+      "expected": "allowed",
+      "outcome": "allowed",
+      "ok": true
+    },
+    {
+      "class": "OBSERVE",
+      "action": "GET /api/v1/contacts",
+      "expected": "allowed",
+      "outcome": "allowed",
+      "ok": true
+    },
+    {
+      "class": "EXECUTE",
+      "action": "POST /api/v1/contacts",
+      "expected": "allowed",
+      "outcome": "allowed",
+      "ok": true
+    }
+  ],
+  "checks": {
+    "total": 47,
+    "passed": 47,
+    "failed": 0
+  },
+  "findings": [],
+  "severity": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0
+  },
+  "report_hygiene": {
+    "redactions": 0,
+    "checked_by_gate": true
+  },
+  "report_fingerprint": "sha256:44c824d3a19d99d0345643c7efcb039f",
+  "audit": {
+    "recorded": true,
+    "run_id": "sen_68b70764cd",
+    "audit_id": "aud_aaa60ebd31",
+    "audit_hash_prefix": "7e11600d40e4e5b972f6a2b981c3d8bc"
+  }
+}
