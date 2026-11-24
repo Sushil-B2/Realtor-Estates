@@ -15,7 +15,7 @@ import sys
 spec = importlib.util.spec_from_file_location("vercel_entry", "api/index.py")
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
-assert m.handler is m.Unavailable
+assert issubclass(m.handler, m.Unavailable)
 assert "app.store" not in sys.modules
 from http.server import HTTPServer
 import threading

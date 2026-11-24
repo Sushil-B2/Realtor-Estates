@@ -51,3 +51,11 @@ if ready:
                     handler = Handler
             except Exception:
                 handler = Unavailable
+
+
+_RuntimeHandler = handler
+
+
+class handler(_RuntimeHandler):
+    """Explicit entry-point class for Vercel function detection."""
+    pass
