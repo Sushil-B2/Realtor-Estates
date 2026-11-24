@@ -657,7 +657,7 @@ Object.assign(RE.actions, {
   async 'new-lead'() {
     modal({
       title: 'New lead',
-      body: `<form data-form="create-lead" id="lead-form">
+      body: `<form data-form="create-lead" id="create-lead">
         <div class="grid g-2">
           <div class="field"><label>Name</label><input class="input" name="name" required maxlength="80"></div>
           <div class="field"><label>Phone (WhatsApp)</label><input class="input" name="phone" required placeholder="+919812345678" maxlength="20"></div>
@@ -679,7 +679,7 @@ Object.assign(RE.actions, {
 
   async 'submit-form'(el) {
     const form = document.getElementById(el.dataset.form);
-    if (form) form.requestSubmit ? form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })) : form.submit();
+    if (form) form.requestSubmit();
   },
 
   'form:create-lead': async (payload) => {
