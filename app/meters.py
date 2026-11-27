@@ -373,7 +373,9 @@ def record(store, tenant_id: str, meter: str, qty: int, *, source_id: str, reaso
     # never silently rewrites a number somebody has already been billed for.
     if snapshot_of(store, tenant_id, period):
         raise PeriodClosed(period)
-    for row in store.db.get("usage_ledger", []):
+    # store.all, not store.db: with per-request database reads the in-memory
+    # working set holds no ledger rows, and a duplicate would be billed twice.
+    for row in store.all("usage_ledger", tenant_id):
         if (row.get("tenant_id") == tenant_id and row.get("meter") == meter
                 and row.get("source_id") == source_id):
             return {**row, "_duplicate": True}
@@ -389,7 +391,7 @@ def record(store, tenant_id: str, meter: str, qty: int, *, source_id: str, reaso
 
 
 def ledger(store, tenant_id: str, period: str | None = None, meter: str = "") -> list[dict]:
-    rows = [r for r in store.db.get("usage_ledger", []) if r.get("tenant_id") == tenant_id]
+    rows = [r for r in store.all("usage_ledger", tenant_id) if r.get("tenant_id") == tenant_id]
     if period:
         rows = [r for r in rows if r.get("period") == period]
     if meter:
@@ -399,7 +401,7 @@ def ledger(store, tenant_id: str, period: str | None = None, meter: str = "") ->
 
 # ------------------------------------------------------------------ snapshots
 def snapshot_of(store, tenant_id: str, period: str) -> dict | None:
-    for row in store.db.get("usage_snapshots", []):
+    for row in store.all("usage_snapshots", tenant_id):
         if row.get("tenant_id") == tenant_id and row.get("period") == period:
             return row
     return None

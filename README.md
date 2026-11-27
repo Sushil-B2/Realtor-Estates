@@ -162,7 +162,7 @@ Full threat model, crypto choices and 5-year horizon: **[docs/05-TECH-SPEC-2026-
 |---|---|---|
 | API routes | `app/api.py` | **311** |
 | Collections | `app/store.py` | **33** |
-| Test functions | `tests/` (47 files) | **605** |
+| Test functions | `tests/` (52 files) | **636** |
 | Test cases collected | `pytest --collect-only` | **0** |
 | Proof scripts | `scripts/proof*` (py + mjs) | **37** |
 | Neon Functions | `functions/*.ts` | **3** |

@@ -301,6 +301,7 @@ class Store:
 
         want_pg = cfg.get("RE_DB", "auto").lower() not in ("json", "file", "off") and dbmod.configured()
         want_stateless = cfg.get("RE_STATELESS_READS", "").strip().lower() in ("1", "true", "yes")
+        require_existing = cfg.get("RE_REQUIRE_EXISTING_DATA", "").strip().lower() in ("1", "true", "yes")
         if want_pg and dbmod.driver_available():
             try:
                 self.backend = dbmod.PgBackend()
@@ -313,6 +314,8 @@ class Store:
                         if callable(batch_fn)
                         else {c: self.backend.load_collection_admin(c) for c in routing_colls}
                     )
+                    if require_existing and not loaded_routing.get("tenants"):
+                        raise dbmod.StorageUnavailable("Existing tenant data unavailable")
                     if not loaded_routing.get("tenants") and not sum(self.backend.counts().values()):
                         self.seed()
                         self._flush_all()
@@ -326,6 +329,8 @@ class Store:
                     self.stateless_reads = True
                 else:
                     loaded_pg = self.backend.load_all()
+                    if require_existing and not loaded_pg.get("tenants"):
+                        raise dbmod.StorageUnavailable("Existing tenant data unavailable")
                     for c in COLLECTIONS:
                         self.db[c] = loaded_pg.get(c, [])
                     if not any(self.db[c] for c in COLLECTIONS if c != "meta"):
@@ -336,7 +341,7 @@ class Store:
                 self.backend_name = "json"
                 self.stateless_reads = False
                 self.backend_error = f"{exc.__class__.__name__}: {exc}"[:300]
-                if cfg.get("RE_DB_STRICT", "") in ("1", "true", "yes"):
+                if require_existing or cfg.get("RE_DB_STRICT", "") in ("1", "true", "yes"):
                     raise
                 print(f"[store] Postgres unavailable ({self.backend_error}) — falling back to the JSON store")
         elif want_pg and not dbmod.driver_available():

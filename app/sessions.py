@@ -163,11 +163,69 @@ def open_session(store, tenant_id: str, user_id: str, *, ip: str = "", ua: str =
     return row, token
 
 
+# ------------------------------------------------------- fresh-session mode
+class RefreshConflict(Exception):
+    """The presented refresh token was superseded or ended by another request."""
+
+
+def _fresh(store) -> bool:
+    """Read and write sessions through the database rather than a cached copy.
+
+    Needed when several instances serve one workspace (serverless): a cached
+    row can miss a revocation made elsewhere. On with `RE_FRESH_SESSIONS=1`
+    (support for it is then required, so a gap fails closed) and by default
+    with per-request database reads. JSON and single-process modes are unchanged.
+    """
+    backend = getattr(store, "backend", None)
+    if backend is None:
+        return False
+    flag = (cfg.get("RE_FRESH_SESSIONS", "") or "").strip().lower()
+    if flag in ("1", "true", "yes", "on"):
+        return True
+    if flag in ("0", "false", "no", "off"):
+        return False
+    return bool(getattr(store, "stateless_reads", False)) and callable(getattr(backend, "merge_document", None))
+
+
+def _remember(store, doc: dict | None) -> dict | None:
+    """Replace this instance's cached copy with the row the database returned."""
+    if not doc:
+        return None
+    doc = dict(doc)
+    with store.lock:
+        rows = store.db["sessions"]
+        for i, cached in enumerate(rows):
+            if cached.get("id") == doc.get("id") and cached.get("tenant_id") == doc.get("tenant_id"):
+                rows[i] = doc
+                break
+        else:
+            rows.append(doc)
+    return dict(doc)
+
+
+def _merge(store, row: dict, patch: dict, *, expect_hash: str | None = None,
+           require_live: bool = False) -> dict | None:
+    """Write only the changed fields in one statement; None if a condition failed."""
+    patch = {**patch, "updated_at": now()}
+    doc = store.backend.merge_document("sessions", row["tenant_id"], row["id"], patch,
+                                       expect_hash=expect_hash, require_live=require_live)
+    return _remember(store, doc)
+
+
+def refresh_tenant(store, tenant_id: str) -> None:
+    """Fresh-session mode: reload a tenant's sessions before listing or ending them."""
+    if tenant_id and _fresh(store):
+        store.reload("sessions", tenant_id)
+
+
 def by_refresh(store, token: str) -> dict | None:
     """The live session this refresh token belongs to, or None."""
     if not token:
         return None
     target = _hash(token)
+    if _fresh(store):
+        doc, current = store.backend.find_session_by_refresh_hash(target)
+        return _remember(store, doc) if doc and current else None
     for row in store.db["sessions"]:
         if sec.hmac.compare_digest(row.get("refresh_hash", ""), target):
             return row
@@ -179,6 +237,9 @@ def reuse_of(store, token: str) -> dict | None:
     if not token:
         return None
     target = _hash(token)
+    if _fresh(store):
+        doc, current = store.backend.find_session_by_refresh_hash(target)
+        return _remember(store, doc) if doc and not current else None
     for row in store.db["sessions"]:
         for old in row.get("refresh_history") or []:
             if sec.hmac.compare_digest(old.get("h", ""), target):
@@ -207,6 +268,12 @@ def rotate(store, row: dict, *, ip: str = "", ua: str = "") -> tuple[dict, str]:
     }
     if ua and ua != row.get("user_agent"):
         patch["user_agent"] = ua[:200]
+    if _fresh(store):
+        # Compare-and-set: only the holder of the current hash may rotate it.
+        updated = _merge(store, row, patch, expect_hash=row.get("refresh_hash", ""), require_live=True)
+        if not updated:
+            raise RefreshConflict("refresh token superseded")
+        return updated, token
     updated = store.update("sessions", row["tenant_id"], row["id"], patch) or {**row, **patch}
     return updated, token
 
@@ -222,13 +289,21 @@ def revoke(store, row: dict, reason: str, *, by: str = "") -> dict:
                 shared.ADAPTER.revoke(f"sid:{sid}", float(REFRESH_TTL))
         except Exception:
             pass
-    return store.update("sessions", row["tenant_id"], row["id"],
-                        {"revoked_at": now(), "revoked_reason": reason[:60], "revoked_by": by[:40]}) or row
+    ended = {"revoked_at": now(), "revoked_reason": reason[:60], "revoked_by": by[:40]}
+    if _fresh(store):
+        updated = _merge(store, row, ended, require_live=True)
+        if updated:
+            return updated
+        # Already ended elsewhere: keep the original reason and report the stored row.
+        current = store.backend.get_document("sessions", row["tenant_id"], row["id"])
+        return _remember(store, current) or {**row, **ended}
+    return store.update("sessions", row["tenant_id"], row["id"], ended) or row
 
 
 def revoke_all(store, tenant_id: str, user_id: str, reason: str, *, keep_sid: str = "",
                by: str = "") -> int:
     killed = 0
+    refresh_tenant(store, tenant_id)
     for row in list(store.db["sessions"]):
         if row.get("tenant_id") != tenant_id or row.get("user_id") != user_id:
             continue
@@ -245,6 +320,13 @@ def active(store, sid: str, tenant_id: str = "") -> dict | None:
         return None
     if sec.is_revoked(f"sid:{sid}"):
         return None
+    if _fresh(store):
+        # Never trust a cached copy: another instance may have ended it. A
+        # storage failure propagates (generic 503) instead of using the cache.
+        if not tenant_id:
+            return None
+        doc = _remember(store, store.backend.get_document("sessions", tenant_id, sid))
+        return doc if doc and alive(doc) else None
     for row in store.db["sessions"]:
         if row.get("id") == sid:
             return row if alive(row) else None
@@ -264,6 +346,9 @@ def active(store, sid: str, tenant_id: str = "") -> dict | None:
 def touch(store, row: dict, *, ip: str = "") -> None:
     """`last_seen` is a write per request otherwise — once a minute is plenty."""
     if now() - int(row.get("last_seen") or 0) < TOUCH_EVERY:
+        return
+    if _fresh(store):
+        _merge(store, row, {"last_seen": now(), "ip_last": ip or row.get("ip_last", "")}, require_live=True)
         return
     store.update("sessions", row["tenant_id"], row["id"],
                  {"last_seen": now(), "ip_last": ip or row.get("ip_last", "")})

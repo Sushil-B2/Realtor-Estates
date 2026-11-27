@@ -13,7 +13,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started · 🔒 blocked
 |---|---|
 | Demo build (PWA + API + agents + guardrails + learning gate) | ✅ running |
 | Real-estate vertical (`docs/18` P0 → P2 + `docs/46`) | ✅ site visits, matching, stage gates, commission, portal ingestion + SLA, channel-partner portal, unit inventory, five-category taxonomy, `7/12` & NA revenue vault, statutory cost sheet, IGR `e-Registration`/`iSarita` SRO + `Index-II`, Bank APF + Loan/CLP, `E-Ferfar` mutation & marketing trust pack |
-| Verification | ✅ pytest — 605 test functions, 666 collected, 15 skipped · REDLINE 53 checks · Sentinel 48 checks · in-process suite 24 · 37 proof scripts |
+| Verification | Pytest and supporting checks are available; see the latest test report for results and skips. |
 | Documentation set | ✅ 51 documents in `docs/` (+ README, this file, changelog, history log) — counts checked by `scripts/doc_facts.py` |
 | Secrets management | ✅ `.env` (0600, git-ignored) + HTTPS Vault/Doppler/Infisical runtime puller (`docs/38`) → HKDF root → 5 subkeys · fail-closed boot · scanner · rotation |
 | Database | ✅ Postgres/Neon, migrations 001–008, RLS on the real branch, append-only audit chain, 7.35 s branch-restore RTO proved (`docs/36`), scale-to-zero anonymous `/healthz` + batched inbox reads (`docs/37`) |

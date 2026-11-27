@@ -156,6 +156,7 @@ RE.views.leads = async () => {
   RE.state.contacts = res.contacts;
   RE.state.tenant = tenant;
   const stages = ['', 'new', 'contacted', 'qualified', 'site_visit', 'negotiation', 'won'];
+  const visibleContacts = filterLeadContacts(res.contacts, RE.state.leadStage, RE.state.leadQuery);
   return {
     title: 'Leads & CRM',
     crumb: `${res.count} contacts · PII masked by role`,
@@ -176,11 +177,11 @@ RE.views.leads = async () => {
         <div class="row wrap" id="stage-filter">
           ${stages.map((s) => `<button class="chip ${(RE.state.leadStage || '') === s ? 'brand' : ''}" data-act="filter-stage" data-stage="${s}">${s ? esc(STAGE_LABEL[s]) : 'All'}</button>`).join('')}
         </div>
-        <span class="right chip grey" id="lead-count">${res.count} shown</span>
+        <span class="right chip grey" id="lead-count">${visibleContacts.length} shown</span>
       </div>
       <div class="table-wrap"><table class="data resp-cards" id="lead-table">
         <thead><tr><th>Lead</th><th>Score</th><th>Stage</th><th>Source</th><th>Budget</th><th>Consent</th><th>Last touch</th><th></th></tr></thead>
-        <tbody>${leadRows(res.contacts)}</tbody>
+        <tbody>${leadRows(visibleContacts)}</tbody>
       </table></div>
     </div>
 
@@ -218,14 +219,18 @@ function leadRows(contacts) {
   </tr>`).join('') || '<tr><td colspan="8" class="empty">No contacts match.</td></tr>';
 }
 
+function filterLeadContacts(contacts, stage, query) {
+  const q = (query || '').toLowerCase();
+  return (contacts || []).filter((c) => {
+    const stageOk = !stage || c.stage === stage;
+    return stageOk && (!q || `${c.name || ''} ${c.city || ''} ${c.requirement || ''} ${c.source || ''}`.toLowerCase().includes(q));
+  });
+}
+
 document.addEventListener('input', (e) => {
   if (e.target.id !== 'lead-search') return;
-  const q = e.target.value.toLowerCase();
   RE.state.leadQuery = e.target.value;
-  const rows = (RE.state.contacts || []).filter((c) => {
-    const stageOk = !RE.state.leadStage || c.stage === RE.state.leadStage;
-    return stageOk && (!q || `${c.name} ${c.city} ${c.requirement} ${c.source}`.toLowerCase().includes(q));
-  });
+  const rows = filterLeadContacts(RE.state.contacts, RE.state.leadStage, RE.state.leadQuery);
   const tb = document.querySelector('#lead-table tbody');
   if (tb) tb.innerHTML = leadRows(rows);
   const cnt = document.getElementById('lead-count');

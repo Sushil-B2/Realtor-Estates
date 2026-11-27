@@ -256,17 +256,17 @@ class PgBackend:
     # -- resilience ------------------------------------------------------
     @property
     def admin(self):
-        """Privileged connection for non-tenant-scoped work, or the runtime one."""
+        """Use configured maintenance connection; never silently downgrade on failure."""
         if self._admin_conn is None and not self._admin_attempted and self._admin_dsn:
             self._admin_attempted = True
             try:
                 self._admin_conn = psycopg.connect(
                     normalise_dsn(self._admin_dsn), autocommit=False, prepare_threshold=None
                 )
-            except Exception as exc:  # pragma: no cover - misconfiguration
-                print(f"[db] RE_ADMIN_DATABASE_URL unusable ({exc.__class__.__name__}) — "
-                      "boot hydration will use the runtime connection")
+            except Exception:
                 self._admin_conn = None
+        if self._admin_dsn and self._admin_conn is None:
+            raise StorageUnavailable("Maintenance database connection unavailable") from None
         return self._admin_conn or self.conn
 
     def _run(self, fn, conn=None):
@@ -508,6 +508,66 @@ class PgBackend:
             return dict(row["doc"]) if row and row.get("doc") else None
 
         return self._run(_read)
+
+    def merge_document(self, collection: str, tenant_id: str, rid: str, patch: dict, *,
+                       expect_hash: str | None = None, require_live: bool = False) -> dict | None:
+        """Merge top-level fields into one tenant document in a single statement.
+
+        Used for sessions: a stale copy on another instance cannot overwrite
+        fields it did not change (for example a revocation). `expect_hash` and
+        `require_live` make refresh rotation and touch compare-and-set. Returns
+        the stored document, or None when it is absent or a condition fails.
+        """
+        if not tenant_id or not rid:
+            return None
+        sql = ("update re_documents set doc = doc || %s::jsonb, updated_at = %s "
+               "where collection = %s and tenant_id = %s and id = %s")
+        params: list[Any] = [json.dumps(patch), int(patch.get("updated_at") or time.time()),
+                             collection, tenant_id, rid]
+        if expect_hash is not None:
+            sql += " and doc->>'refresh_hash' = %s"
+            params.append(expect_hash)
+        if require_live:
+            sql += " and coalesce(doc->>'revoked_at', '0') in ('0', '', 'false')"
+        sql += " returning doc"
+
+        def _write(conn):
+            with conn.cursor(row_factory=dict_row) as cur:
+                self._set_tenant(cur, tenant_id)
+                cur.execute(sql, params)
+                row = cur.fetchone()
+                cur.execute("select set_config('app.tenant_id', '', true)")
+            conn.commit()
+            return dict(row["doc"]) if row and row.get("doc") else None
+
+        return self._run(_write)
+
+    def find_session_by_refresh_hash(self, digest: str) -> tuple[dict | None, bool]:
+        """Find the session holding a current or superseded refresh-token hash.
+
+        The tenant is unknown until the token matches, so this one fixed,
+        parameterised read uses the maintenance connection, as stateless public
+        funnel routing does. Returns (document, hash_is_current).
+        """
+        if not digest:
+            return None, False
+
+        def _read(conn):
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    "select doc, (doc->>'refresh_hash' = %s) as is_current from re_documents "
+                    "where collection = 'sessions' and (doc->>'refresh_hash' = %s "
+                    "or doc->'refresh_history' @> %s::jsonb) "
+                    "order by is_current desc limit 1",
+                    (digest, digest, json.dumps([{"h": digest}])),
+                )
+                row = cur.fetchone()
+                conn.commit()
+            if not row or not row.get("doc"):
+                return None, False
+            return dict(row["doc"]), bool(row.get("is_current"))
+
+        return self._run(_read, conn=self.admin)
 
     def load_collection_admin(self, collection: str) -> list[dict]:
         """Maintenance-role single-collection scan (used only for `tenants` / public `funnels` routing in stateless mode)."""

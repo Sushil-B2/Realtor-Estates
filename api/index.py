@@ -30,7 +30,7 @@ class Unavailable(BaseHTTPRequestHandler):
 handler = Unavailable
 # Provider variables must be entered directly in the project dashboard. Never
 # load local credential files or fall back to an ephemeral demonstration DB.
-required = ("DATABASE_URL", "RE_MASTER_KEY")
+required = ("DATABASE_URL", "RE_ADMIN_DATABASE_URL", "RE_MASTER_KEY")
 ready = (
     all(bool(os.environ.get(key)) for key in required)
     and os.environ.get("RE_ENV") == "production"
@@ -41,6 +41,12 @@ ready = (
 if ready:
     os.environ.setdefault("RE_DATA_DIR", "/tmp/realtor-runtime")
     os.environ["RE_AUTOMATION_TICK"] = "0"
+    # A Preview must not seed a database whose tenant snapshot is unavailable.
+    os.environ["RE_REQUIRE_EXISTING_DATA"] = "1"
+    # Serverless instances must not answer from a boot-time copy: read tenant
+    # records and sessions from the database on each request.
+    os.environ["RE_STATELESS_READS"] = "1"
+    os.environ["RE_FRESH_SESSIONS"] = "1"
     # Initialization failures must not leak provider diagnostics to build logs.
     with open(os.devnull, "w") as sink:
         with contextlib.redirect_stdout(sink), contextlib.redirect_stderr(sink):

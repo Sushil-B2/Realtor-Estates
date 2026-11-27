@@ -35,3 +35,13 @@
    - `node scripts/check-js.mjs` (`0` syntax errors)
    - `python3 scripts/check_a11y.py` (`0` WCAG 2.2 AA violations)
    - `python3 scripts/safe_test_gate.py` (all suites green; isolated temporary file storage for both in-process fixtures and HTTP subprocess; diagnostic payloads suppressed)
+
+## 3. Contract-First, Evidence-Based Delivery
+
+- Preserve existing tenant isolation, encryption, consent, auditability, RERA and outbound-communication controls. Do not weaken them to make a test pass. Security- or compliance-sensitive changes require human review before release.
+- Work in small vertical slices. Before a feature changes a data model, API or UI contract, document the applicable migration, request/response behavior, interaction and acceptance tests. Bug fixes need only the contracts relevant to that fix; do not force an unnecessary schema migration or framework rewrite.
+- Separate simulated integrations from live behavior in the UI and API; never imply an external message, publication, spend, booking or payment happened without provider-confirmed evidence. Do not enable external actions without explicit authorization and consent.
+- Test normal, invalid, authorization, tenant-isolation and failure paths in disposable environments. Record pass, fail, skip and blocked results, test environment and remaining limitations. A mock, static accessibility check or healthy status alone cannot certify a live service or WCAG conformance.
+- Verify both keyboard/touch-accessible and pointer interaction for new workflow controls, with clear error recovery. For pipeline transitions, server authorization and stage gates remain authoritative; any optimistic update must roll back on rejection.
+- Review third-party licenses before reuse. Prefer original implementations of patterns; never copy code into this repository without license compatibility and attribution review.
+- Update the work ledger with exact scope, tested commit, changes, skips and next actions. Do not claim zero defects or guaranteed zero leakage. Keep Preview and production changes within the isolation rules above.

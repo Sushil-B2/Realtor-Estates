@@ -1148,7 +1148,17 @@ def auth_refresh(ctx: Ctx) -> dict:
         sess.revoke(ctx.store, row, "user_inactive")
         raise ApiError(401, "SESSION_EXPIRED", "That account is no longer active.")
 
-    row, new_token = sess.rotate(ctx.store, row, ip=ctx.client_ip, ua=ctx.user_agent)
+    try:
+        row, new_token = sess.rotate(ctx.store, row, ip=ctx.client_ip, ua=ctx.user_agent)
+    except sess.RefreshConflict:
+        # Another request rotated or ended this token first (possibly on another
+        # instance). Same rule as a replay: end the session rather than guess.
+        sess.revoke(ctx.store, row, "refresh_reuse")
+        ctx.store.audit(row["tenant_id"], "", "auth.refresh_reuse", row["id"],
+                        {"ip": ctx.client_ip, "device": (row.get("device") or {}).get("label"),
+                         "concurrent": True})
+        raise ApiError(401, "REFRESH_REUSED",
+                       "This session was ended: a refresh token was used twice. Sign in again.")
     _stash_refresh(new_token)
     token_now = sec.issue_token({"sub": user["email"], "uid": user["id"], "tid": row["tenant_id"],
                                  "role": user["role"], "sid": row["id"]}, ttl=sess.ACCESS_TTL)
@@ -1168,6 +1178,7 @@ def auth_refresh(ctx: Ctx) -> dict:
 @route("GET", r"/api/v1/auth/sessions")
 def auth_sessions_list(ctx: Ctx) -> dict:
     """Where am I signed in? One row per device, this one marked."""
+    sess.refresh_tenant(ctx.store, ctx.tid)
     rows = [r for r in ctx.store.db["sessions"]
             if r.get("tenant_id") == ctx.tid and r.get("user_id") == ctx.user["id"]]
     live = [r for r in rows if sess.alive(r)]
@@ -1184,6 +1195,7 @@ def auth_sessions_list(ctx: Ctx) -> dict:
 def auth_session_revoke(ctx: Ctx) -> dict:
     """End one device. Works on the very next request, not on the next login."""
     sid = ctx.params["sid"]
+    sess.refresh_tenant(ctx.store, ctx.tid)
     row = next((r for r in ctx.store.db["sessions"]
                 if r["id"] == sid and r.get("tenant_id") == ctx.tid), None)
     # Another user's session is not "forbidden", it does not exist: a 403 would
@@ -1218,6 +1230,7 @@ def demo_sessions_sweep(ctx: Ctx) -> dict:
     ctx.require("manage_tenant")
     removed = 0
     live = 0
+    sess.refresh_tenant(ctx.store, ctx.tid)
     for row in list(ctx.store.db["sessions"]):
         if row.get("tenant_id") != ctx.tid:
             continue

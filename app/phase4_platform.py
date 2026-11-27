@@ -769,7 +769,9 @@ def destroy_disposable_proof_tenant(store: Any, ptid: str, *, caller_tid: str = 
         if col == "tenants":
             to_drop = [r for r in items if r.get("id") == ptid]
         else:
-            to_drop = [r for r in items if r.get("tenant_id") == ptid]
+            # store.all reads the database when per-request reads are on; the
+            # in-memory list is empty there and would leave the rows behind.
+            to_drop = [r for r in store.all(col, ptid) if r.get("tenant_id") == ptid]
         for r in to_drop:
             store.remove(col, ptid, r["id"])
             removed_rows += 1

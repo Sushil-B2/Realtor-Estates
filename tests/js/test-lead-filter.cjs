@@ -1,0 +1,11 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const path=require('path');
+const root=process.argv[2]||path.resolve(__dirname,'../..');
+const src=fs.readFileSync(root+'/web/js/views-ops.js','utf8');
+const rows=[{id:'a',name:'Alpha',city:'Nagpur',requirement:'Plot',source:'Manual',stage:'new',score:30},{id:'b',name:'Bravo',city:'Nanded',requirement:'Flat',source:'Website',stage:'contacted',score:70},{id:'c',name:'Charlie',city:'Nagpur',requirement:'Flat',source:'Manual',stage:'qualified',score:90}];
+const RE={state:{},views:{},actions:{}};
+let listener;const tb={innerHTML:''}, count={textContent:''};
+const context={RE,api:async url=>url.includes('contacts')?{contacts:rows,count:rows.length}:{},esc:x=>String(x??''),icon:()=>'',stageChip:x=>x,fmtMoney:x=>x,timeAgo:()=>'',STAGE_LABEL:{new:'Enquiry',contacted:'Contacted',qualified:'Qualified',site_visit:'Site Visit',negotiation:'Negotiation',won:'Booked'},document:{addEventListener:(type,fn)=>{if(type==='input')listener=fn;},querySelector:()=>tb,getElementById:()=>count}};
+vm.createContext(context);vm.runInContext(src.slice(src.indexOf('RE.views.leads = async'),src.indexOf('/* per-contact call simulation')),context);
+const cases=[['all','', '',3],['contacted','contacted','',1],['new','new','',1],['qualified','qualified','',1],['absent-stage','won','',0],['search-name','','alpha',1],['search-city','','nagpur',2],['search-source','','website',1],['combined-match','qualified','flat',1],['combined-no-match','contacted','plot',0]];
+(async()=>{let ok=0;for(const [name,stage,query,expected] of cases){RE.state.leadStage=stage;RE.state.leadQuery=query;try{const view=await RE.views.leads();const body=view.html.match(/<tbody>([\s\S]*?)<\/tbody>/)[1];const n=(body.match(/<tr data-act="open-lead"/g)||[]).length;assert.strictEqual(n,expected);assert(view.html.includes('id="lead-count">'+expected+' shown'));listener({target:{id:'lead-search',value:query}});assert.strictEqual((tb.innerHTML.match(/<tr data-act="open-lead"/g)||[]).length,expected);assert.strictEqual(count.textContent,expected+' shown');console.log('PASS '+name);ok++;}catch{console.log('FAIL '+name)}}console.log('SUMMARY '+ok+'/'+cases.length);if(ok<cases.length)process.exitCode=1})();

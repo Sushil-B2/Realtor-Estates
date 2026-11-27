@@ -7,7 +7,7 @@
      agent can re-open a brochure page with no signal.
    - Offline: JSON error for API calls, cached shell for navigation. */
 
-const VERSION = 're-v1.40.0';
+const VERSION = 're-v1.40.1-lead-filter';
 const SHELL = `${VERSION}-shell`;
 const PUBLIC = `${VERSION}-public`;
 
