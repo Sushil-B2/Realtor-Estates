@@ -214,6 +214,11 @@ def _is_connection_error(exc: BaseException) -> bool:
     return any(cls.__name__ in names for cls in type(exc).__mro__)
 
 
+def _is_closed(conn: Any) -> bool:
+    """True when a driver connection can no longer be used (closed or broken)."""
+    return bool(getattr(conn, "closed", False)) or bool(getattr(conn, "broken", False))
+
+
 class PgBackend:
     """Durable store for the document model. One row per document."""
 
@@ -243,6 +248,7 @@ class PgBackend:
         # — otherwise "the service can read every tenant" is baked in (SEN-003).
         self._admin_conn = None
         self._admin_attempted = False
+        self._admin_retry_at = 0.0
         # An explicit connection string (tests, a migration script, a second
         # tenant-scoped pool) means "use exactly this database". Falling back to
         # .env here would silently mix two databases: a test database for writes
@@ -254,20 +260,45 @@ class PgBackend:
         self._server_version: str | None = None
 
     # -- resilience ------------------------------------------------------
+    # Neon suspends an idle compute and closes its connections, and a network
+    # blip can drop one. A maintenance connection that was lost, or that failed to
+    # open, is therefore reopened on next use, at most once per this many seconds,
+    # instead of failing every later request until the instance is recycled. It
+    # still never falls back to the runtime connection.
+    ADMIN_RETRY_SECONDS = 2.0
+
     @property
     def admin(self):
         """Use configured maintenance connection; never silently downgrade on failure."""
-        if self._admin_conn is None and not self._admin_attempted and self._admin_dsn:
-            self._admin_attempted = True
-            try:
-                self._admin_conn = psycopg.connect(
-                    normalise_dsn(self._admin_dsn), autocommit=False, prepare_threshold=None
-                )
-            except Exception:
-                self._admin_conn = None
-        if self._admin_dsn and self._admin_conn is None:
+        if not self._admin_dsn:
+            return self._admin_conn or self.conn
+        conn = self._admin_conn
+        if conn is not None and not _is_closed(conn):
+            return conn
+        if conn is not None:
+            self._drop_admin()
+        moment = time.monotonic()
+        if self._admin_attempted and moment < getattr(self, "_admin_retry_at", 0.0):
             raise StorageUnavailable("Maintenance database connection unavailable") from None
-        return self._admin_conn or self.conn
+        self._admin_attempted = True
+        try:
+            self._admin_conn = psycopg.connect(
+                normalise_dsn(self._admin_dsn), autocommit=False, prepare_threshold=None
+            )
+        except Exception:
+            self._admin_conn = None
+            self._admin_retry_at = moment + self.ADMIN_RETRY_SECONDS
+            raise StorageUnavailable("Maintenance database connection unavailable") from None
+        return self._admin_conn
+
+    def _drop_admin(self) -> None:
+        """Forget a dead maintenance connection so the next use reopens it."""
+        conn, self._admin_conn = self._admin_conn, None
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     def _run(self, fn, conn=None):
         """Execute `fn(conn)`; on a lost connection, reconnect once and retry.
@@ -295,7 +326,22 @@ class PgBackend:
                         pass
                     raise
                 if conn is not None and conn is not self.conn:
-                    raise StorageUnavailable(f"maintenance connection lost: {exc}") from exc
+                    if conn is not self._admin_conn:
+                        raise StorageUnavailable(f"maintenance connection lost: {exc}") from exc
+                    # The maintenance connection was dropped (for example when Neon
+                    # suspended an idle compute). Reopen it once and retry; failing
+                    # again is an outage (503), never a fallback to the runtime role.
+                    self._drop_admin()
+                    self._admin_retry_at = 0.0
+                    fresh = self.admin
+                    try:
+                        return fn(fresh)
+                    except Exception as exc2:
+                        try:
+                            fresh.rollback()
+                        except Exception:
+                            pass
+                        raise StorageUnavailable(f"maintenance connection lost: {exc2}") from exc2
                 print(f"[db] connection lost ({exc.__class__.__name__}) — reconnecting")
                 if not self._reconnect():
                     raise StorageUnavailable(str(exc)) from exc
@@ -603,6 +649,36 @@ class PgBackend:
             return out
 
         return self._run(_load, conn=self.admin)
+
+    def routing_signature(self, collections: Iterable[str]) -> dict[str, list[int]]:
+        """Cheap change marker for shared routing collections, across tenants.
+
+        Returns {collection: [row count, sum of row versions]} from one statement
+        on the maintenance connection. An insert or delete changes the count, and an
+        update gives the row a new transaction id, which changes the sum (a maximum
+        could miss it after transaction-id wraparound). An instance therefore
+        reloads only what another instance changed. The values are PostgreSQL
+        transaction ids and counts, never document data.
+        """
+        wanted = list(dict.fromkeys(collections))
+        if not wanted:
+            return {}
+
+        def _sig(conn):
+            with conn.cursor() as cur:
+                cur.execute(
+                    "select collection, count(*), coalesce(sum(xmin::text::bigint), 0) "
+                    "from re_documents where collection = any(%s) group by collection",
+                    (wanted,),
+                )
+                rows = cur.fetchall()
+            conn.commit()
+            out = {name: [0, 0] for name in wanted}
+            for name, count, versions in rows:
+                out[name] = [int(count), int(versions)]
+            return out
+
+        return self._run(_sig, conn=self.admin)
 
     def documents_many(self, collections: Iterable[str], tenant_id: str) -> dict[str, list[dict]]:
         """One round trip for several collections. See `documents` for why.

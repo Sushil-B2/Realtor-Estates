@@ -37,6 +37,7 @@ from . import compliance as comp_mod
 from . import connectors as conn_mod
 from . import observability as obs
 from . import realtime as rt
+from .db import StorageUnavailable
 from . import vertical as vt
 from . import ingest as ing
 from . import media as md
@@ -1351,11 +1352,14 @@ def tenant_patch(ctx: Ctx) -> dict:
     settings = {**t.get("settings", {}), **patch}
     if settings.get("ai_disclosure") is False:
         raise ApiError(451, "COMPLIANCE_BLOCKED", "AI disclosure cannot be disabled — it is a hard regulatory gate.")
-    ctx.store.db["tenants"] = [
-        ({**x, "settings": settings, "name": sec.clean(ctx.body["name"], 80)} if x["id"] == ctx.tid and ctx.body.get("name") else {**x, "settings": settings} if x["id"] == ctx.tid else x)
-        for x in ctx.store.db["tenants"]
-    ]
-    ctx.store.save()
+    # Through the store, so the change reaches Postgres. Rewriting the in-memory
+    # list and calling save() only persisted it in file mode; with a database it
+    # was lost on restart and never seen by other instances.
+    changes = {"settings": settings}
+    if ctx.body.get("name"):
+        changes["name"] = sec.clean(ctx.body["name"], 80)
+    if ctx.store.update("tenants", ctx.tid, ctx.tid, changes) is None:
+        raise ApiError(404, "NOT_FOUND", "Workspace not found.")
     ctx.audit("settings.updated", ctx.tid, {"changed": list(patch)})
     # Answer with the row as written, not with the request's pre-patch snapshot:
     # a settings screen that echoes the old quiet hours after a successful save is
@@ -1373,12 +1377,13 @@ def tenant_features(ctx: Ctx) -> dict:
     ])
     if patch.get("autonomous_execution") and ctx.role != "owner":
         raise ApiError(403, "FORBIDDEN_SCOPE", "Only the owner can enable autonomous execution.")
-    for t in ctx.store.db["tenants"]:
-        if t["id"] == ctx.tid:
-            t["features"] = {**t.get("features", {}), **{k: bool(v) for k, v in patch.items()}}
-    ctx.store.save()
+    current = ctx.store.get("tenants", ctx.tid, ctx.tid) or ctx.tenant or {}
+    features = {**current.get("features", {}), **{k: bool(v) for k, v in patch.items()}}
+    saved = ctx.store.update("tenants", ctx.tid, ctx.tid, {"features": features})
+    if saved is None:
+        raise ApiError(404, "NOT_FOUND", "Workspace not found.")
     ctx.audit("features.updated", ctx.tid, patch)
-    return {"features": next(t for t in ctx.store.db["tenants"] if t["id"] == ctx.tid)["features"]}
+    return {"features": saved.get("features", features)}
 
 
 @route("POST", r"/api/v1/tenant/kill-switch")
@@ -1388,10 +1393,9 @@ def tenant_kill(ctx: Ctx) -> dict:
     # Target is the state being asked for, not the tenant: a confirmation to *stop*
     # the agents is not a confirmation to start them again (docs/34 §3).
     ctx.require_step_up("kill_switch", "engage" if engage else "release")
-    for t in ctx.store.db["tenants"]:
-        if t["id"] == ctx.tid:
-            t["kill_switch"] = engage
-    ctx.store.save()
+    # Saved through the store so every instance, and the next start, honours it.
+    if ctx.store.update("tenants", ctx.tid, ctx.tid, {"kill_switch": engage}) is None:
+        raise ApiError(404, "NOT_FOUND", "Workspace not found.")
     ctx.audit("kill_switch.toggled", ctx.tid, {"engage": engage})
     return {"kill_switch": engage}
 
@@ -9155,6 +9159,13 @@ def resolve_neon_auth_identity(store: Store, token: str) -> tuple[dict, dict, di
     return claims, user, session
 
 
+def _storage_unavailable() -> tuple[int, dict, dict]:
+    """The durable store is down: a retryable 503 with a trace id, never a 500 (SEN-004)."""
+    return 503, {"error": {"code": "STORAGE_UNAVAILABLE",
+                           "message": "Storage is temporarily unavailable. Retry shortly.",
+                           "trace_id": nid("trc")}}, {"Retry-After": "2"}
+
+
 def handle(store: Store, method: str, path: str, query: dict, body: dict, headers: dict, client_ip: str, cookie_token: str | None, raw: bytes = b"") -> tuple[int, dict, dict]:
     """Returns (status, payload, extra_headers) with W3C `traceparent` + OTLP span recording (`W13`, `v1.39.0`)."""
     t0 = time.perf_counter()
@@ -9165,7 +9176,16 @@ def handle(store: Store, method: str, path: str, query: dict, body: dict, header
     route_name = getattr(fn, "__name__", "unmatched") if fn else "unmatched"
     store.begin_request_cache()
     try:
-        status, payload, extra = _handle_inner(store, method, path, query, body, headers, client_ip, cookie_token, raw)
+        try:
+            # Workspaces, users, website keys and funnels may have changed on another
+            # instance; bring them current before routing or authentication reads them.
+            sync = getattr(store, "sync_routing", None)
+            if callable(sync):
+                sync()
+        except StorageUnavailable:
+            status, payload, extra = _storage_unavailable()
+        else:
+            status, payload, extra = _handle_inner(store, method, path, query, body, headers, client_ip, cookie_token, raw)
     finally:
         store.end_request_cache()
     end_ns = time.time_ns()
@@ -9353,6 +9373,8 @@ def _handle_inner(store: Store, method: str, path: str, query: dict, body: dict,
         return e.status, {"error": {"code": e.code, "message": e.message, "details": e.details, "trace_id": nid("trc")}}, {"_tid": ctx.tid or ""}
     except (ValueError, OverflowError) as e:
         return 400, {"error": {"code": "VALIDATION_FAILED", "message": str(e), "trace_id": nid("trc")}}, {}
+    except StorageUnavailable:
+        return _storage_unavailable()
     except Exception as e:  # never leak internals
         import traceback
 

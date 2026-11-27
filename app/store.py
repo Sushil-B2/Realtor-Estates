@@ -298,6 +298,7 @@ class Store:
         self.backend_name = "json"
         self.backend_error = ""
         self.stateless_reads = False
+        self._routing_sig: dict = {}
 
         want_pg = cfg.get("RE_DB", "auto").lower() not in ("json", "file", "off") and dbmod.configured()
         want_stateless = cfg.get("RE_STATELESS_READS", "").strip().lower() in ("1", "true", "yes")
@@ -440,6 +441,37 @@ class Store:
 
     # ---------------- tenant-scoped access ----------------
     _STATELESS_ROUTING = ("tenants", "users", "sessions", "ingest_keys", "funnels")
+    # Routing collections kept current per request; sessions are re-read per
+    # request by app/sessions.py already.
+    _ROUTING_SYNC = ("tenants", "users", "ingest_keys", "funnels")
+
+    def sync_routing(self) -> None:
+        """Bring the shared routing collections up to date with the database.
+
+        In per-request mode (`RE_STATELESS_READS=1`) workspaces, users, website keys
+        and funnels are still served from memory, because login, key checks and
+        public funnels must find a record before they know its tenant. Another
+        instance may have changed them since this one started. Each request first
+        compares a cheap database-wide change marker and reloads only the
+        collections that changed, so a revoked key, a deactivated user or a new
+        funnel is honoured everywhere on the next request.
+        """
+        if not (self.stateless_reads and self.backend):
+            return
+        sig_fn = getattr(self.backend, "routing_signature", None)
+        if not callable(sig_fn):
+            return
+        sig = sig_fn(self._ROUTING_SYNC)
+        known = getattr(self, "_routing_sig", {}) or {}
+        changed = [c for c in self._ROUTING_SYNC if sig.get(c) != known.get(c)]
+        if changed:
+            batch_fn = getattr(self.backend, "load_collections_admin", None)
+            loaded = (batch_fn(changed) if callable(batch_fn)
+                      else {c: self.backend.load_collection_admin(c) for c in changed})
+            with self.lock:
+                for c in changed:
+                    self.db[c] = [dict(r) for r in (loaded.get(c) or [])]
+        self._routing_sig = dict(sig)
 
     def begin_request_cache(self) -> None:
         """Enable a strictly single-request thread-local read snapshot (`F-01` safe)."""
@@ -653,6 +685,25 @@ class Store:
             return dict(rec)
 
     def update(self, coll: str, tenant_id: str, rid: str, patch: dict) -> dict | None:
+        if (self.stateless_reads and self.backend and coll in self._ROUTING_SYNC
+                and callable(getattr(self.backend, "merge_document", None))):
+            # Merge only the changed fields in the database. Writing this
+            # instance's whole copy back could undo a change made elsewhere since
+            # the copy was read, such as a key revocation or a deactivated user.
+            merged = self.backend.merge_document(
+                coll, tenant_id, rid, {**patch, "id": rid, "tenant_id": tenant_id, "updated_at": now()})
+            with self.lock:
+                rows = self.db[coll]
+                idx = next((i for i, r in enumerate(rows)
+                            if r.get("id") == rid and r.get("tenant_id") == tenant_id), None)
+                if merged is None:
+                    if idx is not None:
+                        self.db[coll] = rows[:idx] + rows[idx + 1:]
+                    return None
+                fresh = dict(merged)
+                self.db[coll] = (rows + [fresh]) if idx is None else (rows[:idx] + [fresh] + rows[idx + 1:])
+            self._invalidate_req_cache(tenant_id, coll)
+            return dict(fresh)
         if self.stateless_reads and self.backend and coll not in self._STATELESS_ROUTING:
             with self.lock:
                 existing = self.backend.get_document(coll, tenant_id, rid)

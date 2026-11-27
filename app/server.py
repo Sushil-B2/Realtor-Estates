@@ -828,6 +828,11 @@ def start_automation_worker(interval: int | None = None) -> None:
         runtime = autm.Runtime(worker_store)
         while True:
             try:
+                # Workspaces created, changed or stopped by request instances since
+                # this worker started (per-request mode); a no-op otherwise.
+                sync = getattr(worker_store, "sync_routing", None)
+                if callable(sync):
+                    sync()
                 for tenant in list(worker_store.db["tenants"]):
                     runtime.tick(tenant["id"])
             except Exception as exc:  # a tick must never kill the server
