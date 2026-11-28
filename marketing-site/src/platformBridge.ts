@@ -19,12 +19,14 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   try { data = JSON.parse(String(init?.body || '{}')); } catch { return respond({ok:false,error:'Invalid enquiry.'},400); }
   if (data.consent !== true) return respond({ok:false,error:'Communication consent is required.'},422);
   // Reuse the platform's published funnel lookup, tenant routing and anti-bot token.
-  const form = await nativeFetch('/f/' + encodeURIComponent(slug), {credentials:'omit',cache:'no-store'});
+  // same-origin, not omit: a protected Vercel Preview admits only requests that carry its
+  // login cookie. Public funnel routes ignore CRM session cookies and skip CSRF by design.
+  const form = await nativeFetch('/f/' + encodeURIComponent(slug), {credentials:'same-origin',cache:'no-store'});
   if (!form.ok) return respond({ok:false,error:'This CRM funnel is not published or is unavailable.'},404);
   const doc = new DOMParser().parseFromString(await form.text(),'text/html');
   const ftok = doc.querySelector<HTMLInputElement>('input[name="_ftok"]')?.value;
   const result = await nativeFetch('/api/v1/public/funnel/' + encodeURIComponent(slug) + '/submit',{
-    method:'POST',credentials:'omit',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({
       name:data.fullName,phone:data.phone,email:data.email,city:'Nagpur',consent:data.consent,
       company_website:data.website || '',_ftok:ftok,
       requirement:[data.projectName,data.plotNumber ? 'Plot '+data.plotNumber : '',data.interest,data.message].filter(Boolean).join(' · ').slice(0,200),

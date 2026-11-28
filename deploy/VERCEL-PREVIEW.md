@@ -12,6 +12,8 @@ Serverless instances do not share memory. The adapter therefore forces per-reque
 
 Running the full test suite on that local database in this mode found two older paths that read only the in-memory copy: usage metering and proof-workspace teardown. Both now read through the store. The remaining failures in that run were tests that expect the file store, one test whose fake backend has no session read, and one test that depends on list order. A manual check confirmed the agent approval guardrail held outbound actions for every seeded agent in both modes.
 
+Website enquiries on a protected Preview: the imported website's bridge makes two same-origin requests, the funnel page and the public submit. They now send the browser's cookies (`credentials: 'same-origin'`). With Vercel login protection on, a request without the login cookie never reaches the app, so the earlier `omit` setting blocked every website enquiry on the Preview. Public funnel routes ignore CRM session cookies and skip CSRF by design. This is checked locally against the source and the shipped bundle; a live Preview enquiry still has to confirm it.
+
 ## Before enabling the backend
 
 1. Upload these changes to integration/crm-and-marketing-website only. Never merge or deploy main automatically.
